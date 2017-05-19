@@ -1,6 +1,8 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+
+#include <functional>
 #include <stdlib.h>
 #include <stdio.h>
 #include <vector>
@@ -16,25 +18,24 @@
 using namespace glm;
 using namespace std;
 
-static const struct {
-    float x, y;
-    float r, g, b;
-} vertices[3] =
-{
-    { -0.6f, -0.4f, 1.f, 0.f, 0.f },
-    { 0.6f, -0.4f, 0.f, 1.f, 0.f },
-    { 0.f,  0.6f, 0.f, 0.f, 1.f }
+#pragma pack(push, 1)
+struct Vertex {
+    vec3 position;
+    vec3 color;
 };
+#pragma pack(pop)
+
 static const char* vertex_shader_text =
 "uniform mat4 MVP;\n"
 "attribute vec3 vColor;\n"
-"attribute vec2 vPos;\n"
+"attribute vec3 vPos;\n"
 "varying vec3 color;\n"
 "void main()\n"
 "{\n"
-"    gl_Position = MVP * vec4(vPos, 0.0, 1.0);\n"
+"    gl_Position = MVP * vec4(vPos, 1.0);\n"
 "    color = vColor;\n"
 "}\n";
+
 static const char* fragment_shader_text =
 "varying vec3 color;\n"
 "void main()\n"
@@ -140,6 +141,10 @@ void MakeSphere(VoxelSet& voxels) {
     }
 }
 
+//////////////////////////////////////////////////////////////////////////
+// Display list functions
+//////////////////////////////////////////////////////////////////////////
+
 void DrawFace(vec3 center, vec3 normal) {
     // Center of voxel to center of face
     center += vec3(normal) * voxelSize / 2.0f;
@@ -232,12 +237,177 @@ void MakeDisplayListGrid(VoxelSet& model, ivec3 dimensions, vec3 spacing, std::v
     }
 }
 
+//////////////////////////////////////////////////////////////////////////
+// VBO functions
+//////////////////////////////////////////////////////////////////////////
+
+void BufferFace(vec3 center, vec3 normal, vec3 color, vector<Vertex>& vertices, int& nextIdx) {
+    // Center of voxel to center of face
+    center += vec3(normal) * voxelSize / 2.0f;
+
+    vec3 d1 = -vec3(normal.z, normal.x, normal.y);
+    vec3 d2 = -vec3(normal.y, normal.z, normal.x);
+
+    vector<vec2> weights = {
+        { -1, -1 },
+        {  1, -1 },
+        {  1,  1 },
+        { -1,  1 },
+    };
+
+    // Reverse winding order for negative normals
+    if (normal.x < 0 || normal.y < 0 || normal.z < 0) {
+        std::swap(d1, d2);
+    }
+
+    for (int i = 0; i < 4; ++i) {
+        vec2 w = weights[i];
+
+        Vertex v;
+        v.color = color;
+        v.position = center + (d1 * w.x + d2 * w.y) / 2.0f * voxelSize;
+
+        if (nextIdx >= vertices.size()) {
+            vertices.push_back(v);
+        } else {
+            vertices[nextIdx] = v;
+        }
+        nextIdx++;
+    }
+}
+
+void BufferVoxel(VoxelSet& voxels, vec3 offset, ivec3 idx, vector<Vertex>& vertices, int& nextIdx) {
+    if (!voxels.IsSolid(idx)) {
+        return;
+    }
+
+    vec3 color = voxels.At(idx);
+    vec3 center = offset + vec3(idx) * voxelSize + vec3(voxelSize, voxelSize, voxelSize) / 2.0f;
+
+    vector<ivec3> normals = {
+        { 1, 0, 0 },
+        {-1, 0, 0 },
+        { 0, 1, 0 },
+        { 0,-1, 0 },
+        { 0, 0, 1 },
+        { 0, 0,-1 },
+    };
+
+    for (auto& n : normals) {
+        if (voxels.IsSolid(idx + n)) {
+            continue;
+        }
+        BufferFace(center, vec3(n), color, vertices, nextIdx);
+    }
+}
+
+void VoxelsToVbo(VoxelSet& voxels, vec3 offset, vector<Vertex>& vertices) {
+    int nextIdx = 0;
+
+    for (int z = 0; z < voxels.size.z; ++z) {
+        for (int y = 0; y < voxels.size.y; ++y) {
+            for (int x = 0; x < voxels.size.x; ++x) {
+                BufferVoxel(voxels, offset, ivec3(x, y, z), vertices, nextIdx);
+            }
+        }
+    }
+}
+
+size_t MakeVboGrid(VoxelSet& model, ivec3 dimensions, vec3 spacing, std::vector<GLuint>& vaos, GLuint program) {
+    std::vector<GLuint> vbos;
+    vbos.resize(dimensions.x * dimensions.y * dimensions.z);
+    vaos.resize(dimensions.x * dimensions.y * dimensions.z);
+
+    glGenBuffers(vbos.size(), &vbos[0]);
+    CheckGLErrors();
+
+    glGenVertexArrays(vaos.size(), &vaos[0]);
+    CheckGLErrors();
+
+    int nextVbo = 0;
+
+    vector<Vertex> vertices;
+
+    for (int z = 0; z < dimensions.z; ++z) {
+        for (int y = 0; y < dimensions.y; ++y) {
+            for (int x = 0; x < dimensions.x; ++x) {
+                ivec3 idx(x, y, z);
+                vec3 offset = vec3(idx) * spacing;
+                offset -= vec3(0, dimensions.y, 0) * spacing / 2.0f;
+                //vertices.resize(0);
+                VoxelsToVbo(model, offset, vertices);
+
+                glBindVertexArray(vaos[nextVbo]);
+                glBindBuffer(GL_ARRAY_BUFFER, vbos[nextVbo]);
+                glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
+
+                GLint vPosLoc = glGetAttribLocation(program, "vPos");
+                glEnableVertexAttribArray(vPosLoc);
+                glVertexAttribPointer(vPosLoc, 3, GL_FLOAT, GL_FALSE,
+                                      sizeof(float) * 6, (void*)0);
+                CheckGLErrors();
+
+                GLint vColorPos = glGetAttribLocation(program, "vColor");
+                glEnableVertexAttribArray(vColorPos);
+                glVertexAttribPointer(vColorPos, 3, GL_FLOAT, GL_FALSE,
+                                      sizeof(float) * 6, (void*)(sizeof(float) * 3));
+                CheckGLErrors();
+
+                nextVbo++;
+            }
+        }
+    }
+
+    return vertices.size();
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Perf helpers
+//////////////////////////////////////////////////////////////////////////
+
+void RunPerf(std::function<void()> drawFn, int discardFrames, int frameCount, char* filename) {
+    ofstream fout(filename);
+
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    glViewport(0, 0, width, height);
+    glClearColor(0.1f, 0.12f, 0.6f, 1.0f);
+
+    PerfTimer timer;
+    timer.Start();
+    while (frameCount > 0) {
+        double frameTime = timer.Stop();
+        timer.Start();
+        if (discardFrames == 0) {
+            if (frameCount > 0) {
+                fout << (frameTime * 1000.0f) << endl;
+                frameCount--;
+                if (frameCount == 0) {
+                    fout.close();
+                }
+            }
+        } else {
+            discardFrames--;
+        }
+        
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        drawFn();
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Main
+//////////////////////////////////////////////////////////////////////////
+
 int main(void) {
     // Number of frames to delay before recording perf
     int frameDelay = 32;
     int samples = 1024;
 
     ivec3 voxelGrid(32, 8, 32);
+    //ivec3 voxelGrid(2, 2, 2);
     vec3 voxelSpacing(32, 32, 32);
     voxelSpacing *= voxelSize;
 
@@ -261,41 +431,53 @@ int main(void) {
     GLuint program = MakeShader();
     GLint mvpLoc = glGetUniformLocation(program, "MVP");
 
-    glGenBuffers(1, &vertex_buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    CheckGLErrors();
-
-    GLint vPosLoc = glGetAttribLocation(program, "vPos");
-    glEnableVertexAttribArray(vPosLoc);
-    glVertexAttribPointer(vPosLoc, 2, GL_FLOAT, GL_FALSE,
-                          sizeof(float) * 5, (void*)0);
-    CheckGLErrors();
-
-    GLint vColorPos = glGetAttribLocation(program, "vColor");
-    glEnableVertexAttribArray(vColorPos);
-    glVertexAttribPointer(vColorPos, 3, GL_FLOAT, GL_FALSE,
-                          sizeof(float) * 5, (void*)(sizeof(float) * 2));
-    CheckGLErrors();
-
     glEnable(GL_DEPTH_TEST);
     glCullFace(GL_BACK);
     glEnable(GL_CULL_FACE);
 
     VoxelSet sphere({ 32,32,32 });
     MakeSphere(sphere);
-    CheckGLErrors();
-    GLuint displayList = VoxelsToDisplayList(sphere, vec3(0, -sphere.size.y * voxelSize / 2.0f, 0));
-    CheckGLErrors();
 
     std::vector<GLuint> displayLists;
     MakeDisplayListGrid(sphere, voxelGrid, voxelSpacing, displayLists);
 
-    ofstream dlResults("DisplayListResults.txt");
+    vector<GLuint> vaos;
+    size_t vertexCount = MakeVboGrid(sphere, voxelGrid, voxelSpacing, vaos, program);
+
+    GLint vPosLoc = glGetAttribLocation(program, "vPos");
+    GLint vColorPos = glGetAttribLocation(program, "vColor");
 
     PerfTimer timer;
     timer.Start();
-    while (!glfwWindowShouldClose(window)) {
+
+    RunPerf([&]() {
+        mat4 mv = MakeModelView();
+        mat4 p = MakeProjection();
+
+        glUseProgram(0);
+        glMatrixMode(GL_PROJECTION);
+        glLoadMatrixf((float*)&p);
+        glMatrixMode(GL_MODELVIEW);
+        glLoadMatrixf((float*)&mv);
+
+        for (auto& list : displayLists) {
+            glCallList(list);
+        }
+    }, 32, 1024, "PerfDrawList.txt");
+
+    RunPerf([&]() {
+        mat4 mvp = MakeMvp();
+
+        glUseProgram(program);
+        glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, (const GLfloat*)&mvp);
+
+        for (GLuint vao : vaos) {
+            glBindVertexArray(vao);
+            glDrawArrays(GL_QUADS, 0, vertexCount);
+        }
+    }, 32, 1024, "PerfVao.txt");
+
+    /*while (!glfwWindowShouldClose(window)) {
         double frameTime = timer.Stop();
         timer.Start();
         if (frameDelay == 0) {
@@ -324,7 +506,21 @@ int main(void) {
         glUseProgram(program);
         glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, (const GLfloat*)&mvp);
 
-        //glDrawArrays(GL_TRIANGLES, 0, 3);
+        for (GLuint vao : vaos) {
+            glBindVertexArray(vao);
+
+            //glEnableVertexAttribArray(vPosLoc);
+            /*glVertexAttribPointer(vPosLoc, 3, GL_FLOAT, GL_FALSE,
+                                  sizeof(float) * 6, (void*)0);
+            CheckGLErrors();
+
+            //glEnableVertexAttribArray(vColorPos);
+            /*glVertexAttribPointer(vColorPos, 3, GL_FLOAT, GL_FALSE,
+                                  sizeof(float) * 6, (void*)(sizeof(float) * 3));* /
+            CheckGLErrors();
+
+            glDrawArrays(GL_QUADS, 0, vertexCount);
+        }
 
         glUseProgram(0);
         glMatrixMode(GL_PROJECTION);
@@ -332,22 +528,14 @@ int main(void) {
         glMatrixMode(GL_MODELVIEW);
         glLoadMatrixf((float*)&mv);
 
-        //glCallList(displayList);
-        //CheckGLErrors();
-
         for (auto& list : displayLists) {
-            glCallList(list);
+            //glCallList(list);
         }
         CheckGLErrors();
 
-        
-
-        glFlush();
         glfwSwapBuffers(window);
         glfwPollEvents();
-    }
-
-    dlResults.close();
+    }*/
 
     glfwDestroyWindow(window);
     glfwTerminate();

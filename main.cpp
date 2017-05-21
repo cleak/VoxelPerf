@@ -13,6 +13,9 @@
 #include <fstream>
 #include <iostream>
 
+#include <windows.h>
+#include <psapi.h>
+
 #include "PerfTimer.h"
 
 using namespace glm;
@@ -313,7 +316,7 @@ void VoxelsToVbo(VoxelSet& voxels, vec3 offset, vector<Vertex>& vertices) {
     }
 }
 
-size_t MakeVboGrid(VoxelSet& model, ivec3 dimensions, vec3 spacing, std::vector<GLuint>& vaos, GLuint program) {
+size_t MakeVaoGrid(VoxelSet& model, ivec3 dimensions, vec3 spacing, std::vector<GLuint>& vaos, GLuint program) {
     std::vector<GLuint> vbos;
     vbos.resize(dimensions.x * dimensions.y * dimensions.z);
     vaos.resize(dimensions.x * dimensions.y * dimensions.z);
@@ -334,7 +337,6 @@ size_t MakeVboGrid(VoxelSet& model, ivec3 dimensions, vec3 spacing, std::vector<
                 ivec3 idx(x, y, z);
                 vec3 offset = vec3(idx) * spacing;
                 offset -= vec3(0, dimensions.y, 0) * spacing / 2.0f;
-                //vertices.resize(0);
                 VoxelsToVbo(model, offset, vertices);
 
                 glBindVertexArray(vaos[nextVbo]);
@@ -365,6 +367,28 @@ size_t MakeVboGrid(VoxelSet& model, ivec3 dimensions, vec3 spacing, std::vector<
 // Perf helpers
 //////////////////////////////////////////////////////////////////////////
 
+#define GL_GPU_MEM_INFO_TOTAL_AVAILABLE_MEM_NVX 0x9048
+#define GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX 0x9049
+
+size_t GetFreeMemNvidia() {
+    // TODO: AMD version w/ GL_ATI_meminfo
+    GLint currMem = 0;
+    glGetIntegerv(GL_GPU_MEM_INFO_CURRENT_AVAILABLE_MEM_NVX, &currMem);
+    return (size_t)currMem * 1024;
+}
+
+size_t GetMainMemUsage() {
+    PROCESS_MEMORY_COUNTERS_EX pmc;
+    GetProcessMemoryInfo(GetCurrentProcess(), (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc));
+    return pmc.PrivateUsage;
+}
+
+struct PerfRecord {
+    size_t  gpuMemUsed;
+    size_t  mainMemUsed;
+    double averageFrameTimeMs;
+};
+
 void RunPerf(std::function<void()> drawFn, int discardFrames, int frameCount, char* filename) {
     ofstream fout(filename);
 
@@ -389,7 +413,7 @@ void RunPerf(std::function<void()> drawFn, int discardFrames, int frameCount, ch
         } else {
             discardFrames--;
         }
-        
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         drawFn();
         glfwSwapBuffers(window);
@@ -397,22 +421,7 @@ void RunPerf(std::function<void()> drawFn, int discardFrames, int frameCount, ch
     }
 }
 
-//////////////////////////////////////////////////////////////////////////
-// Main
-//////////////////////////////////////////////////////////////////////////
-
-int main(void) {
-    // Number of frames to delay before recording perf
-    int frameDelay = 32;
-    int samples = 1024;
-
-    ivec3 voxelGrid(32, 8, 32);
-    //ivec3 voxelGrid(2, 2, 2);
-    vec3 voxelSpacing(32, 32, 32);
-    voxelSpacing *= voxelSize;
-
-    GLuint vertex_buffer;
-    GLint mvp_location, vpos_location, vcol_location;
+PerfRecord RunPerf2(std::function<void()> setupFn, std::function<void()> drawFn, int discardFrames, int frameCount) {
     if (!glfwInit()) {
         exit(EXIT_FAILURE);
     }
@@ -428,116 +437,161 @@ int main(void) {
     glewInit();
     glfwSwapInterval(1);
 
-    GLuint program = MakeShader();
-    GLint mvpLoc = glGetUniformLocation(program, "MVP");
-
     glEnable(GL_DEPTH_TEST);
     glCullFace(GL_BACK);
     glEnable(GL_CULL_FACE);
 
-    VoxelSet sphere({ 32,32,32 });
-    MakeSphere(sphere);
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    glViewport(0, 0, width, height);
+    glClearColor(0.1f, 0.12f, 0.6f, 1.0f);
 
-    std::vector<GLuint> displayLists;
-    MakeDisplayListGrid(sphere, voxelGrid, voxelSpacing, displayLists);
+    size_t gpuFreeBefore = GetFreeMemNvidia();
+    size_t memUsedBefore = GetMainMemUsage();
+    CheckGLErrors();
 
-    vector<GLuint> vaos;
-    size_t vertexCount = MakeVboGrid(sphere, voxelGrid, voxelSpacing, vaos, program);
+    setupFn();
+    CheckGLErrors();
 
-    GLint vPosLoc = glGetAttribLocation(program, "vPos");
-    GLint vColorPos = glGetAttribLocation(program, "vColor");
+    size_t gpuFreeAfter = GetFreeMemNvidia();
+    size_t memUsedAfter = GetMainMemUsage();
+    CheckGLErrors();
+
+    double totalFrameTime = 0.0;
+    double totalRecordedFrames = frameCount;
 
     PerfTimer timer;
     timer.Start();
-
-    RunPerf([&]() {
-        mat4 mv = MakeModelView();
-        mat4 p = MakeProjection();
-
-        glUseProgram(0);
-        glMatrixMode(GL_PROJECTION);
-        glLoadMatrixf((float*)&p);
-        glMatrixMode(GL_MODELVIEW);
-        glLoadMatrixf((float*)&mv);
-
-        for (auto& list : displayLists) {
-            glCallList(list);
-        }
-    }, 32, 1024, "PerfDrawList.txt");
-
-    RunPerf([&]() {
-        mat4 mvp = MakeMvp();
-
-        glUseProgram(program);
-        glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, (const GLfloat*)&mvp);
-
-        for (GLuint vao : vaos) {
-            glBindVertexArray(vao);
-            glDrawArrays(GL_QUADS, 0, vertexCount);
-        }
-    }, 32, 1024, "PerfVao.txt");
-
-    /*while (!glfwWindowShouldClose(window)) {
+    while (frameCount > 0) {
         double frameTime = timer.Stop();
         timer.Start();
-        if (frameDelay == 0) {
-            if (samples > 0) {
-                dlResults << frameTime << endl;
-                samples--;
-                if (samples == 0) {
-                    dlResults.close();
-                }
+        if (discardFrames == 0) {
+            if (frameCount > 0) {
+                totalFrameTime += frameTime * 1000.0f;
+                frameCount--;
             }
         } else {
-            frameDelay--;
+            discardFrames--;
         }
 
-        int width, height;
-        glfwGetFramebufferSize(window, &width, &height);
-        glViewport(0, 0, width, height);
-
-        float t = (float)(cos(glfwGetTime()) + 1) / 2;
-        glClearColor(0.1f, 0.12f, t * 0.8f + 0.2f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        mat4 mvp = MakeMvp();
-        mat4 mv = MakeModelView();
-        mat4 p = MakeProjection();
-        glUseProgram(program);
-        glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, (const GLfloat*)&mvp);
-
-        for (GLuint vao : vaos) {
-            glBindVertexArray(vao);
-
-            //glEnableVertexAttribArray(vPosLoc);
-            /*glVertexAttribPointer(vPosLoc, 3, GL_FLOAT, GL_FALSE,
-                                  sizeof(float) * 6, (void*)0);
-            CheckGLErrors();
-
-            //glEnableVertexAttribArray(vColorPos);
-            /*glVertexAttribPointer(vColorPos, 3, GL_FLOAT, GL_FALSE,
-                                  sizeof(float) * 6, (void*)(sizeof(float) * 3));* /
-            CheckGLErrors();
-
-            glDrawArrays(GL_QUADS, 0, vertexCount);
-        }
-
-        glUseProgram(0);
-        glMatrixMode(GL_PROJECTION);
-        glLoadMatrixf((float*)&p);
-        glMatrixMode(GL_MODELVIEW);
-        glLoadMatrixf((float*)&mv);
-
-        for (auto& list : displayLists) {
-            //glCallList(list);
-        }
-        CheckGLErrors();
-
+        drawFn();
         glfwSwapBuffers(window);
         glfwPollEvents();
-    }*/
+    }
 
     glfwDestroyWindow(window);
     glfwTerminate();
+
+    PerfRecord record;
+
+    record.averageFrameTimeMs = totalFrameTime / totalRecordedFrames;
+    record.gpuMemUsed = gpuFreeBefore - gpuFreeAfter;
+    record.mainMemUsed = memUsedAfter - memUsedBefore;
+
+    return record;
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Main
+//////////////////////////////////////////////////////////////////////////
+
+void Usage() {
+    cerr << "VoxelPerf [dl|vao] <width> <height> <depth>" << endl;
+}
+
+int main(int argc, char** argv) {
+    if (argc != 5) {
+        Usage();
+        exit(EXIT_FAILURE);
+    }
+
+    string testType = string(argv[1]);
+    if (testType != "dl" && testType != "vao") {
+        Usage();
+        exit(EXIT_FAILURE);
+    }
+
+    int w = atoi(argv[2]);
+    int h = atoi(argv[3]);
+    int d = atoi(argv[4]);
+
+    if (w <= 0 || h <= 0 || d <= 0) {
+        Usage();
+        exit(EXIT_FAILURE);
+    }
+
+    int discardFrames = 32;
+    int recordFrames = 128;
+
+    VoxelSet sphere({ 32,32,32 });
+    MakeSphere(sphere);
+
+    bool runDlPerf = (testType == "dl");
+    bool runVaoPerf = (testType == "vao");
+
+    ivec3 voxelGrid(w, h, d);
+
+    vec3 voxelSpacing(32, 32, 32);
+    voxelSpacing *= voxelSize;
+
+    int numObjects = voxelGrid.x * voxelGrid.y * voxelGrid.z;
+
+    // Test display list perf
+    if (runDlPerf) {
+        std::vector<GLuint> displayLists;
+        PerfRecord record = RunPerf2(
+            [&]() {
+                MakeDisplayListGrid(sphere, voxelGrid, voxelSpacing, displayLists);
+            },
+            [&]() {
+                mat4 mv = MakeModelView();
+                mat4 p = MakeProjection();
+
+                glUseProgram(0);
+                glMatrixMode(GL_PROJECTION);
+                glLoadMatrixf((float*)&p);
+                glMatrixMode(GL_MODELVIEW);
+                glLoadMatrixf((float*)&mv);
+
+                //glCallLists(displayLists.size(), GL_UNSIGNED_INT, &displayLists[0]);
+                for (auto& list : displayLists) {
+                    glCallList(list);
+                }
+            },
+            discardFrames,
+            recordFrames);
+        cout << "display list, " << numObjects << ", " << record.averageFrameTimeMs << ", " << record.gpuMemUsed << ", " << record.mainMemUsed << endl;
+    }
+
+    // Test VAO perf
+    if (runVaoPerf) {
+        GLuint program;
+        GLint mvpLoc;
+        vector<GLuint> vaos;
+        size_t vertexCount;
+            
+        PerfRecord record = RunPerf2(
+            [&]() {
+                program = MakeShader();
+                mvpLoc = glGetUniformLocation(program, "MVP");
+                vertexCount = MakeVaoGrid(sphere, voxelGrid, voxelSpacing, vaos, program);
+            },
+            [&]() {
+                mat4 mvp = MakeMvp();
+
+                glUseProgram(program);
+                glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, (const GLfloat*)&mvp);
+
+                for (GLuint vao : vaos) {
+                    glBindVertexArray(vao);
+                    glDrawArrays(GL_QUADS, 0, vertexCount);
+                }
+            },
+            discardFrames,
+            recordFrames);
+        cout << "vao, " << numObjects << ", " << record.averageFrameTimeMs << ", " << record.gpuMemUsed << ", " << record.mainMemUsed << endl;
+    }
+
     exit(EXIT_SUCCESS);
 }

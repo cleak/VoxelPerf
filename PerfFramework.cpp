@@ -139,6 +139,18 @@ mat4 MakeMvp() {
     return MakeProjection() * MakeModelView();
 }
 
+void PrintMatrix(glm::mat4 matrix) {
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            if (j > 0) {
+                cout << ", ";
+            }
+            cout << matrix[i][j];
+        }
+        cout << endl;
+    }
+}
+
 GLuint MakeShaderProgram(std::vector<std::pair<std::string, GLenum>> shaders) {
     GLuint program = glCreateProgram();
 
@@ -147,7 +159,32 @@ GLuint MakeShaderProgram(std::vector<std::pair<std::string, GLenum>> shaders) {
         GLuint shaderId = glCreateShader(s.second);
         const GLchar* srcGlChar = (const GLchar*)src.c_str();
         glShaderSource(shaderId, 1, &srcGlChar, NULL);
+
         glCompileShader(shaderId);
+        GLint success = 0;
+        glGetShaderiv(shaderId, GL_COMPILE_STATUS, &success);
+
+        if (success == GL_FALSE) {
+            GLint logSize = 0;
+            GLint maxLength = 0;
+            glGetShaderiv(shaderId, GL_INFO_LOG_LENGTH, &maxLength);
+
+            // The maxLength includes the NULL character
+            std::vector<GLchar> errorLog(maxLength);
+            //errorLog.assign({});
+            glGetShaderInfoLog(shaderId, maxLength, &maxLength, &errorLog[0]);
+            cerr << "*************************************************" << endl;
+            cerr << "Shader \"" << s.first << "\" failed to compile:" << endl;
+            cerr << &errorLog[0] << endl;
+            cerr << endl;
+
+            // Provide the infolog in whatever manor you deem best.
+            // Exit with failure.
+            glDeleteShader(shaderId); // Don't leak the shader.
+            glDeleteProgram(program);
+            return 0;
+        }
+
         glAttachShader(program, shaderId);
         glDeleteShader(shaderId);
         CheckGLErrors();

@@ -44,7 +44,7 @@ void DrawVoxel(VoxelSet& voxels, vec3 offset, ivec3 idx) {
 
     vector<ivec3> normals = {
         { 1, 0, 0 },
-        { -1, 0, 0 },
+        {-1, 0, 0 },
         { 0, 1, 0 },
         { 0,-1, 0 },
         { 0, 0, 1 },

@@ -33,3 +33,21 @@ echo "testTitle, numObjects, avgFrameTimeMs, gpuMemUsed, mainMemUsed" > ResultsV
 .\x64\Release\VoxelPerf.exe vao 32 14 32 >> ResultsVao.csv
 .\x64\Release\VoxelPerf.exe vao 32 15 32 >> ResultsVao.csv
 .\x64\Release\VoxelPerf.exe vao 32 16 32 >> ResultsVao.csv
+
+echo "testTitle, numObjects, avgFrameTimeMs, gpuMemUsed, mainMemUsed" > ResultsGeometryShader.csv
+.\x64\Release\VoxelPerf.exe gs 32 1 32 >> ResultsGeometryShader.csv
+.\x64\Release\VoxelPerf.exe gs 32 2 32 >> ResultsGeometryShader.csv
+.\x64\Release\VoxelPerf.exe gs 32 3 32 >> ResultsGeometryShader.csv
+.\x64\Release\VoxelPerf.exe gs 32 4 32 >> ResultsGeometryShader.csv
+.\x64\Release\VoxelPerf.exe gs 32 5 32 >> ResultsGeometryShader.csv
+.\x64\Release\VoxelPerf.exe gs 32 6 32 >> ResultsGeometryShader.csv
+.\x64\Release\VoxelPerf.exe gs 32 7 32 >> ResultsGeometryShader.csv
+.\x64\Release\VoxelPerf.exe gs 32 8 32 >> ResultsGeometryShader.csv
+.\x64\Release\VoxelPerf.exe gs 32 9 32 >> ResultsGeometryShader.csv
+.\x64\Release\VoxelPerf.exe gs 32 10 32 >> ResultsGeometryShader.csv
+.\x64\Release\VoxelPerf.exe gs 32 11 32 >> ResultsGeometryShader.csv
+.\x64\Release\VoxelPerf.exe gs 32 12 32 >> ResultsGeometryShader.csv
+.\x64\Release\VoxelPerf.exe gs 32 13 32 >> ResultsGeometryShader.csv
+.\x64\Release\VoxelPerf.exe gs 32 14 32 >> ResultsGeometryShader.csv
+.\x64\Release\VoxelPerf.exe gs 32 15 32 >> ResultsGeometryShader.csv
+.\x64\Release\VoxelPerf.exe gs 32 16 32 >> ResultsGeometryShader.csv

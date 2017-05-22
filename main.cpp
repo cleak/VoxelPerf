@@ -17,12 +17,13 @@
 
 #include "DisplayLists.h"
 #include "Vaos.h"
+#include "GeometryShader.h"
 
 using namespace glm;
 using namespace std;
 
 void Usage() {
-    cerr << "VoxelPerf [dl|vao] <width> <height> <depth>" << endl;
+    cerr << "VoxelPerf [dl|vao|gs] <width> <height> <depth>" << endl;
 }
 
 int main(int argc, char** argv) {
@@ -32,7 +33,7 @@ int main(int argc, char** argv) {
     }
 
     string testType = string(argv[1]);
-    if (testType != "dl" && testType != "vao") {
+    if (testType != "dl" && testType != "vao" && testType != "gs") {
         Usage();
         exit(EXIT_FAILURE);
     }
@@ -54,6 +55,7 @@ int main(int argc, char** argv) {
 
     bool runDlPerf = (testType == "dl");
     bool runVaoPerf = (testType == "vao");
+    bool runGsPerf = (testType == "gs");
 
     ivec3 voxelGrid(w, h, d);
 
@@ -72,6 +74,11 @@ int main(int argc, char** argv) {
     // Test VAO perf
     if (runVaoPerf) {
         record = RunVaosTest(sphere, voxelGrid, voxelSpacing);
+    }
+
+    // Test geometry shader perf
+    if (runGsPerf) {
+        record = RunGeometryShaderTest(sphere, voxelGrid, voxelSpacing);
     }
 
     cout << testType << ", " << numObjects << ", " << record.averageFrameTimeMs << ", " << record.gpuMemUsed << ", " << record.mainMemUsed << endl;

@@ -123,6 +123,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="DisplayLists.cpp" />
+    <ClCompile Include="GeometryShader.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="PerfFramework.cpp" />
     <ClCompile Include="PerfTimer.cpp" />
@@ -130,6 +131,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DisplayLists.h" />
+    <ClInclude Include="GeometryShader.h" />
     <ClInclude Include="PerfFramework.h" />
     <ClInclude Include="PerfTimer.h" />
     <ClInclude Include="Vaos.h" />

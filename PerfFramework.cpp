@@ -73,9 +73,13 @@ PerfRecord RunPerf(std::function<void()> setupFn, std::function<void()> drawFn, 
     setupFn();
     CheckGLErrors();
 
-    size_t gpuFreeAfter = GetFreeMemNvidia();
-    size_t memUsedAfter = GetMainMemUsage();
-    CheckGLErrors();
+    glFinish();
+
+    //size_t gpuFreeAfter = GetFreeMemNvidia();
+    //size_t memUsedAfter = GetMainMemUsage();
+
+    size_t gpuFreeAfter;
+    size_t memUsedAfter;
 
     double totalFrameTime = 0.0;
     double totalRecordedFrames = frameCount;
@@ -92,6 +96,11 @@ PerfRecord RunPerf(std::function<void()> setupFn, std::function<void()> drawFn, 
             }
         } else {
             discardFrames--;
+
+            if (discardFrames == 0) {
+                gpuFreeAfter = GetFreeMemNvidia();
+                memUsedAfter = GetMainMemUsage();
+            }
         }
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

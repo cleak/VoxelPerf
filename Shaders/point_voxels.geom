@@ -8,8 +8,6 @@ in int gEnabledFaces[];
 
 out vec3 fColor;
 
-const float PI = 3.1415926;
-
 uniform float voxSize = 0.25;
 uniform mat4 mvp;
 
@@ -34,7 +32,6 @@ void AddQuad(vec4 center, vec4 dy, vec4 dx) {
 }
 
 void main() {
-    //center += vec3(normal) * VOXEL_SIZE / 2.0f;
     vec4 center = gl_in[0].gl_Position;
 
     vec4 dx = mvp[0] / 2.0f * voxSize;

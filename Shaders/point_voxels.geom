@@ -1,10 +1,7 @@
 #version 150
 
 layout(points) in;
-//layout(line_strip, max_vertices = 4) out;
-//layout(triangle_strip, max_vertices = 24) out;
-//layout(triangle_strip, max_vertices = 20) out;
-layout(triangle_strip, max_vertices = 4) out;
+layout(triangle_strip, max_vertices = 24) out;
 
 in vec3 gColor[];
 in int gEnabledFaces[];

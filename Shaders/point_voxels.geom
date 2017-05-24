@@ -2,6 +2,7 @@
 
 layout(points) in;
 layout(triangle_strip, max_vertices = 24) out;
+//layout(triangle_strip, max_vertices = 16) out;
 
 in vec3 gColor[];
 in int gEnabledFaces[];

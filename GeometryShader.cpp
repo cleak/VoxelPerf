@@ -42,6 +42,10 @@ void BufferVoxelPoint(VoxelSet& voxels, vec3 offset, ivec3 idx, vector<PointVert
         p.enabledFaces |= (1 << i);
     }
 
+    if (p.enabledFaces == 0) {
+        return;
+    }
+
     p.position = center;
     p.color = color;
 
@@ -96,19 +100,19 @@ size_t MakeGridPoints(VoxelSet& model, ivec3 dimensions, vec3 spacing, std::vect
                 GLint vPosLoc = glGetAttribLocation(program, "vPos");
                 glEnableVertexAttribArray(vPosLoc);
                 glVertexAttribPointer(vPosLoc, 3, GL_FLOAT, GL_FALSE,
-                                      sizeof(float) * 6 + 1, (void*)0);
+                                      sizeof(PointVertex), (void*)0);
                 CheckGLErrors();
 
                 GLint vColorPos = glGetAttribLocation(program, "vColor");
                 glEnableVertexAttribArray(vColorPos);
-                glVertexAttribPointer(vColorPos, 3, GL_FLOAT, GL_FALSE,
-                                      sizeof(float) * 6 + 1, (void*)(sizeof(float) * 3));
+                glVertexAttribPointer(vColorPos, 3, GL_FLOAT, GL_TRUE,
+                                      sizeof(PointVertex), (void*)(sizeof(float) * 3));
                 CheckGLErrors();
 
                 GLint vEnabledFaces = glGetAttribLocation(program, "vEnabledFaces");
                 glEnableVertexAttribArray(vEnabledFaces);
                 glVertexAttribIPointer(vEnabledFaces, 1, GL_UNSIGNED_BYTE, 
-                                       sizeof(float) * 6 + 1, (void*)(sizeof(float) * 6));
+                                       sizeof(PointVertex), (void*)(sizeof(float) * 6));
                 CheckGLErrors();
 
                 nextVbo++;

@@ -18,6 +18,7 @@
 #include "DisplayLists.h"
 #include "Vaos.h"
 #include "GeometryShader.h"
+#include "QuadGeom.h"
 
 using namespace glm;
 using namespace std;
@@ -33,7 +34,8 @@ int main(int argc, char** argv) {
     }
 
     string testType = string(argv[1]);
-    if (testType != "dl" && testType != "vao" && testType != "gs") {
+    if (testType != "dl" && testType != "vao" && testType != "gs"
+        && testType != "qgs") {
         Usage();
         exit(EXIT_FAILURE);
     }
@@ -48,7 +50,7 @@ int main(int argc, char** argv) {
     }
 
     int discardFrames = 32;
-    int recordFrames = 128;
+    int recordFrames = 128128128;
 
     VoxelSet sphere({ 32,32,32 });
     sphere.MakeSphere();
@@ -56,6 +58,7 @@ int main(int argc, char** argv) {
     bool runDlPerf = (testType == "dl");
     bool runVaoPerf = (testType == "vao");
     bool runGsPerf = (testType == "gs");
+    bool runQgsPerf = (testType == "qgs");
 
     ivec3 voxelGrid(w, h, d);
 
@@ -79,6 +82,11 @@ int main(int argc, char** argv) {
     // Test geometry shader perf
     if (runGsPerf) {
         record = RunGeometryShaderTest(sphere, voxelGrid, voxelSpacing);
+    }
+
+    // Test quad-only geometry shader perf
+    if (runQgsPerf) {
+        record = RunQuadGeometryShaderTest(sphere, voxelGrid, voxelSpacing);
     }
 
     cout << testType << ", " << numObjects << ", " << record.averageFrameTimeMs << ", " << record.gpuMemUsed << ", " << record.mainMemUsed << endl;

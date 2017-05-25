@@ -9,46 +9,16 @@ using namespace glm;
 using namespace std;
 
 #pragma pack(push, 1)
-struct PackedVec {
-    int x : 10;
-    int y : 10;
-    int z : 10;
-    int w : 2;
-};
-
 struct PointQuad {
     vec3 position;
-    
-    vec3 color;
+    //vec3 color;
+    PackedColor color;
 
-    PackedVec extent1;
-    PackedVec extent2;
+    //PackedVec extent1;
+    //PackedVec extent2;
+    uint8_t faceIdx;
 };
 #pragma pack(pop)
-
-
-
-uint32_t PackWXYZ(vec3 v) {
-    uint32_t val = 0;
-    uint32_t maxField = (1 << 10) - 1;
-
-    for (int i = 0; i < 3; ++i) {
-
-        if (v[i] == 1.0f) {
-            val |= 1;
-        } else if (v[i] == -1.0f) {
-            val |= maxField;
-        } else if (v[i] == 0) {
-            val |= 0;
-        } else {
-            cout << " ERROR!" << endl;
-        }
-
-        val <<= 10;
-    }
-
-    return val;
-}
 
 int FloatToPackedInt(float f) {
     if (f == 1.0f) {
@@ -73,7 +43,8 @@ PackedVec PackVec(vec3 v) {
     return p;
 }
 
-void BufferPointQuadFace(vec3 center, vec3 normal, vec3 color, vector<PointQuad>& vertices, int& nextIdx) {
+void BufferPointQuadFace(vec3 center, vec3 normal, vec3 color, vector<PointQuad>& vertices, int& nextIdx,
+                         uint8_t faceIdx) {
     // Center of voxel to center of face
     center += vec3(normal) * VOXEL_SIZE / 2.0f;
 
@@ -93,15 +64,16 @@ void BufferPointQuadFace(vec3 center, vec3 normal, vec3 color, vector<PointQuad>
     }
 
     PointQuad p;
-    p.color = color;
+    p.color = PackColor(color);
     p.position = center;
+    p.faceIdx = faceIdx;
     //p.extent1 = d1 / 2.0f * VOXEL_SIZE;
     //p.extent2 = d2 / 2.0f * VOXEL_SIZE;
 
     //p.extent1 = PackWXYZ(d1);
     //p.extent2 = PackWXYZ(d2);
-    p.extent1 = PackVec(d1);
-    p.extent2 = PackVec(d2);
+    //p.extent1 = PackVec(d1);
+    //p.extent2 = PackVec(d2);
     
     if (nextIdx >= vertices.size()) {
         vertices.push_back(p);
@@ -136,7 +108,7 @@ void BufferPointQuadVoxel(VoxelSet& voxels, vec3 offset, ivec3 idx, vector<Point
         if (voxels.IsSolid(idx + normals[i])) {
             continue;
         }
-        BufferPointQuadFace(center, vec3(normals[i]), color, vertices, nextIdx);
+        BufferPointQuadFace(center, vec3(normals[i]), color, vertices, nextIdx, (uint8_t)i);
     }
 }
 
@@ -189,12 +161,12 @@ size_t MakeGridPointQuads(VoxelSet& model, ivec3 dimensions, vec3 spacing, std::
 
                 GLint vColorPos = glGetAttribLocation(program, "vColor");
                 glEnableVertexAttribArray(vColorPos);
-                glVertexAttribPointer(vColorPos, 3, GL_FLOAT, GL_FALSE,
+                glVertexAttribPointer(vColorPos, 4, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE,
                                       sizeof(PointQuad),
                                       (void*)offsetof(PointQuad, color));
                 CheckGLErrors();
 
-                GLint vExtent1 = glGetAttribLocation(program, "vExtent1");
+                /*GLint vExtent1 = glGetAttribLocation(program, "vExtent1");
                 glEnableVertexAttribArray(vExtent1);
                 glVertexAttribPointer(vExtent1, 4, GL_INT_2_10_10_10_REV, GL_TRUE,
                                        sizeof(PointQuad),
@@ -206,6 +178,13 @@ size_t MakeGridPointQuads(VoxelSet& model, ivec3 dimensions, vec3 spacing, std::
                 glVertexAttribPointer(vExtent2, 4, GL_INT_2_10_10_10_REV, GL_TRUE,
                                       sizeof(PointQuad),
                                       (void*)offsetof(PointQuad, extent2));
+                CheckGLErrors();*/
+
+                GLint vExtent1 = glGetAttribLocation(program, "vFaceIdx");
+                glEnableVertexAttribArray(vExtent1);
+                glVertexAttribIPointer(vExtent1, 1, GL_BYTE,
+                                      sizeof(PointQuad),
+                                      (void*)offsetof(PointQuad, faceIdx));
                 CheckGLErrors();
 
                 nextVbo++;
@@ -223,6 +202,7 @@ PerfRecord RunQuadGeometryShaderTest(VoxelSet & model, glm::ivec3 gridSize, glm:
     vector<GLuint> vbos;
     size_t vertexCount;
 
+    GLuint displayList = 0xffffffff;
     PerfRecord record = RunPerf(
         [&]() {
         // Setup
@@ -240,14 +220,21 @@ PerfRecord RunQuadGeometryShaderTest(VoxelSet & model, glm::ivec3 gridSize, glm:
         mat4 mvp = MakeMvp();
         //PrintMatrix(mvp);
 
-        glUseProgram(program);
-        glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, (const GLfloat*)&mvp);
+        /*if (displayList == 0xffffffff) {
+            displayList = glGenLists(1);
+            glNewList(displayList, GL_COMPILE);*/
 
-        for (GLuint vao : vaos) {
-            glBindVertexArray(vao);
-            glDrawArrays(GL_POINTS, 0, vertexCount);
-            //glDrawArrays(GL_POINTS, 0, 3);
-        }
+            glUseProgram(program);
+            glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, (const GLfloat*)&mvp);
+
+            for (GLuint vao : vaos) {
+                glBindVertexArray(vao);
+                glDrawArrays(GL_POINTS, 0, vertexCount);
+                //glDrawArrays(GL_POINTS, 0, 3);
+            }
+        /*}
+
+        glCallList(displayList);*/
     },
         [&]() {
         // Teardown

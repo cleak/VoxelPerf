@@ -96,7 +96,7 @@ void MakeDisplayListGrid(VoxelSet& model, ivec3 dimensions, vec3 spacing, std::v
     }
 }
 
-PerfRecord RunDrawListsTest(VoxelSet& model, glm::ivec3 gridSize, glm::vec3 voxelSpacing) {
+PerfRecord RunDisplayListsTest(VoxelSet& model, glm::ivec3 gridSize, glm::vec3 voxelSpacing) {
     std::vector<GLuint> displayLists;
     PerfRecord record = RunPerf(
         [&]() {

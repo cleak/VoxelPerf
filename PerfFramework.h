@@ -7,6 +7,26 @@
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 
+#pragma pack(push, 1)
+struct PackedVec {
+    int x : 10;
+    int y : 10;
+    int z : 10;
+    int w : 2;
+};
+
+struct PackedColor {
+    unsigned int r : 10;
+    unsigned int g : 10;
+    unsigned int b : 10;
+    unsigned int a : 2;
+};
+#pragma pack(pop)
+
+PackedVec PackVec3(glm::vec3 v);
+PackedVec PackVec4(glm::vec4 v);
+PackedColor PackColor(glm::vec3 color);
+
 // How many frames to discard before recording starts
 #define FRAMES_TO_DISCARD 32
 

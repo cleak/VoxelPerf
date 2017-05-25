@@ -1,9 +1,11 @@
+#version 410
+
 uniform mat4 mvp;
 
-attribute vec3 vColor;
-attribute vec3 vPos;
+attribute lowp vec3 vColor;
+attribute lowp vec3 vPos;
 
-varying vec3 color;
+varying lowp vec3 color;
 
 void main() {
     gl_Position = mvp * vec4(vPos, 1.0);

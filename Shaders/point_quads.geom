@@ -1,14 +1,13 @@
-#version 150
+#version 410
 
 layout(points) in;
 //layout(triangle_strip, max_vertices = 24) out;
 layout(triangle_strip, max_vertices = 4) out;
 
-in vec3 gColor[];
-in vec4 gExtent1[];
-in vec4 gExtent2[];
+flat in lowp vec3 gColor[];
+flat in int gFaceIdx[];
 
-out vec3 fColor;
+flat out lowp vec3 fColor;
 
 uniform float voxSize = 0.25;
 uniform mat4 mvp;
@@ -34,6 +33,26 @@ void AddQuad(vec4 center, vec4 dy, vec4 dx) {
 }
 
 void main() {
+    const vec3 dxs[6] = vec3[6](
+        vec3(0, 1, 0),
+        vec3(0, 0, 1),
+        vec3(0, 0, 1),
+        vec3(1, 0, 0),
+        vec3(1, 0, 0),
+        vec3(0, 1, 0)
+    );
+
+    const vec3 dys[6] = vec3[6](
+        vec3(0, 0, 1),
+        vec3(0, 1, 0),
+        vec3(1, 0, 0),
+        vec3(0, 0, 1),
+        vec3(0, 1, 0),
+        vec3(1, 0, 0)
+    );
+
     vec4 center = gl_in[0].gl_Position;
-    AddQuad(center, gExtent1[0], gExtent2[0]);
+    AddQuad(center, 
+        mvp * vec4(dxs[gFaceIdx[0]] / 2.0f * voxSize, 0),
+        mvp * vec4(dys[gFaceIdx[0]] / 2.0f * voxSize, 0));
 }

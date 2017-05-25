@@ -6,4 +6,4 @@
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 
-PerfRecord RunDisplayListsTest(VoxelSet& model, glm::ivec3 gridSize, glm::vec3 voxelSpacing);
+PerfRecord RunHybridInstancedTest(VoxelSet& model, glm::ivec3 gridSize, glm::vec3 voxelSpacing);

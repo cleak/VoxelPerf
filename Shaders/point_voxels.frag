@@ -1,4 +1,5 @@
-varying vec3 fColor;
+#version 410
+flat in lowp vec3 fColor;
 //varying int fEnabledFaces;
 
 void main() {

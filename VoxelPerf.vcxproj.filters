@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Techniques">
+      <UniqueIdentifier>{dca86b6d-28a8-4d65-86ef-622eda6d99dd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Techniques\Src">
+      <UniqueIdentifier>{dfcd2fb6-68e2-4595-b737-01c2d187fdd6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -25,16 +31,25 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DisplayLists.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Vaos.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Techniques\Src</Filter>
     </ClCompile>
     <ClCompile Include="GeometryShader.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Techniques\Src</Filter>
     </ClCompile>
     <ClCompile Include="QuadGeom.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Techniques\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Vaos.cpp">
+      <Filter>Techniques\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Instanced.cpp">
+      <Filter>Techniques\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="ComapctDisplayLists.cpp">
+      <Filter>Techniques\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="HybridInstanced.cpp">
+      <Filter>Techniques\Src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -48,16 +63,25 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DisplayLists.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Vaos.h">
-      <Filter>Header Files</Filter>
+      <Filter>Techniques</Filter>
     </ClInclude>
     <ClInclude Include="GeometryShader.h">
-      <Filter>Header Files</Filter>
+      <Filter>Techniques</Filter>
     </ClInclude>
     <ClInclude Include="QuadGeom.h">
-      <Filter>Header Files</Filter>
+      <Filter>Techniques</Filter>
+    </ClInclude>
+    <ClInclude Include="Vaos.h">
+      <Filter>Techniques</Filter>
+    </ClInclude>
+    <ClInclude Include="Instanced.h">
+      <Filter>Techniques</Filter>
+    </ClInclude>
+    <ClInclude Include="CompactDisplayLists.h">
+      <Filter>Techniques</Filter>
+    </ClInclude>
+    <ClInclude Include="HybridInstanced.h">
+      <Filter>Techniques</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -19,12 +19,15 @@
 #include "Vaos.h"
 #include "GeometryShader.h"
 #include "QuadGeom.h"
+#include "Instanced.h"
+#include "CompactDisplayLists.h"
+#include "HybridInstanced.h"
 
 using namespace glm;
 using namespace std;
 
 void Usage() {
-    cerr << "VoxelPerf [dl|vao|gs] <width> <height> <depth>" << endl;
+    cerr << "VoxelPerf [dl|cdl|vao|gs|qgs|inst] <width> <height> <depth>" << endl;
 }
 
 int main(int argc, char** argv) {
@@ -35,7 +38,8 @@ int main(int argc, char** argv) {
 
     string testType = string(argv[1]);
     if (testType != "dl" && testType != "vao" && testType != "gs"
-        && testType != "qgs") {
+        && testType != "qgs" && testType != "inst" && testType != "cdl"
+        && testType != "hyi") {
         Usage();
         exit(EXIT_FAILURE);
     }
@@ -49,16 +53,16 @@ int main(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
 
-    int discardFrames = 32;
-    int recordFrames = 128128128;
-
     VoxelSet sphere({ 32,32,32 });
     sphere.MakeSphere();
 
     bool runDlPerf = (testType == "dl");
+    bool runCdlPerf = (testType == "cdl");
     bool runVaoPerf = (testType == "vao");
     bool runGsPerf = (testType == "gs");
     bool runQgsPerf = (testType == "qgs");
+    bool runInstancedPerf = (testType == "inst");
+    bool runHyInstancedPerf = (testType == "hyi");
 
     ivec3 voxelGrid(w, h, d);
 
@@ -71,7 +75,12 @@ int main(int argc, char** argv) {
 
     // Test display list perf
     if (runDlPerf) {
-        record = RunDrawListsTest(sphere, voxelGrid, voxelSpacing);
+        record = RunDisplayListsTest(sphere, voxelGrid, voxelSpacing);
+    }
+
+    // Test compact display list perf
+    if (runCdlPerf) {
+        record = RunCompactDisplayListsTest(sphere, voxelGrid, voxelSpacing);
     }
 
     // Test VAO perf
@@ -87,6 +96,16 @@ int main(int argc, char** argv) {
     // Test quad-only geometry shader perf
     if (runQgsPerf) {
         record = RunQuadGeometryShaderTest(sphere, voxelGrid, voxelSpacing);
+    }
+
+    // Test quad-only geometry shader perf
+    if (runInstancedPerf) {
+        record = RunInstancedTest(sphere, voxelGrid, voxelSpacing);
+    }
+
+    // Test quad-only geometry shader perf
+    if (runHyInstancedPerf) {
+        record = RunHybridInstancedTest(sphere, voxelGrid, voxelSpacing);
     }
 
     cout << testType << ", " << numObjects << ", " << record.averageFrameTimeMs << ", " << record.gpuMemUsed << ", " << record.mainMemUsed << endl;

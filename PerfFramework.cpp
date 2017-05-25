@@ -6,6 +6,8 @@
 #include <sstream>
 #include <vector>
 
+#include <math.h>
+
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
@@ -55,7 +57,7 @@ PerfRecord RunPerf(std::function<void()> setupFn, std::function<void()> drawFn, 
 
     glfwMakeContextCurrent(window);
     glewInit();
-    glfwSwapInterval(1);
+    glfwSwapInterval(0);
 
     glEnable(GL_DEPTH_TEST);
     glCullFace(GL_BACK);
@@ -213,4 +215,48 @@ std::string ReadTextFile(std::string filename) {
 
     string str(static_cast<stringstream const&>(stringstream() << textStream.rdbuf()).str());
     return str;
+}
+
+int Round10BitSigned(float value) {
+    if (value < 0) {
+        return (int)round(value * 512);
+    } else {
+        return (int)round(value * 511);
+    }
+}
+
+int Round2BitSigned(float value) {
+    if (value < 0) {
+        return (int)round(value * 2);
+    } else {
+        return (int)round(value * 1);
+    }
+}
+
+PackedVec PackVec3(vec3 v) {
+    PackedVec packed;
+    packed.w = 0;
+    packed.x = Round10BitSigned(v.x);
+    packed.y = Round10BitSigned(v.y);
+    packed.z = Round10BitSigned(v.z);
+    return packed;
+}
+
+PackedVec PackVec4(glm::vec4 v) {
+    PackedVec packed;
+    packed.w = Round2BitSigned(v.w);
+    packed.x = Round10BitSigned(v.x);
+    packed.y = Round10BitSigned(v.y);
+    packed.z = Round10BitSigned(v.z);
+    return packed;
+}
+
+
+PackedColor PackColor(vec3 color) {
+    PackedColor packed;
+    packed.a = 3;
+    packed.r = (unsigned int)(color.r * 1023);
+    packed.g = (unsigned int)(color.g * 1023);
+    packed.b = (unsigned int)(color.b * 1023);
+    return packed;
 }

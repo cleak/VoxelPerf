@@ -122,8 +122,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ComapctDisplayLists.cpp" />
     <ClCompile Include="DisplayLists.cpp" />
     <ClCompile Include="GeometryShader.cpp" />
+    <ClCompile Include="HybridInstanced.cpp" />
+    <ClCompile Include="Instanced.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="PerfFramework.cpp" />
     <ClCompile Include="PerfTimer.cpp" />
@@ -131,8 +134,11 @@
     <ClCompile Include="Vaos.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CompactDisplayLists.h" />
     <ClInclude Include="DisplayLists.h" />
     <ClInclude Include="GeometryShader.h" />
+    <ClInclude Include="HybridInstanced.h" />
+    <ClInclude Include="Instanced.h" />
     <ClInclude Include="PerfFramework.h" />
     <ClInclude Include="PerfTimer.h" />
     <ClInclude Include="QuadGeom.h" />

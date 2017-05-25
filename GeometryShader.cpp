@@ -13,7 +13,7 @@ struct PointVertex {
 };
 #pragma pack(pop)
 
-// Buffers all faces of a voxel in the given vector
+// Buffers all voxels as GL_POINTS with face information
 void BufferVoxelPoint(VoxelSet& voxels, vec3 offset, ivec3 idx, vector<PointVertex>& vertices, int& nextIdx) {
     if (!voxels.IsSolid(idx)) {
         return;
@@ -140,7 +140,6 @@ PerfRecord RunGeometryShaderTest(VoxelSet & model, glm::ivec3 gridSize, glm::vec
         });
         mvpLoc = glGetUniformLocation(program, "mvp");
         vertexCount = MakeGridPoints(model, gridSize, voxelSpacing, vaos, vbos, program);
-        //glPointSize(4.0f);
     },
     [&]() {
         // Draw

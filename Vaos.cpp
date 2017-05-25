@@ -142,8 +142,6 @@ PerfRecord RunVaosTest(VoxelSet & model, glm::ivec3 gridSize, glm::vec3 voxelSpa
     vector<GLuint> vbos;
     size_t vertexCount;
 
-    GLuint displayList = 0xffffffff;
-
     PerfRecord record = RunPerf(
         [&]() {
             program = MakeShaderProgram({
@@ -156,21 +154,13 @@ PerfRecord RunVaosTest(VoxelSet & model, glm::ivec3 gridSize, glm::vec3 voxelSpa
         [&]() {
             mat4 mvp = MakeMvp();
 
-            /*if (displayList == 0xffffffff) {
-                displayList = glGenLists(1);
-                glNewList(displayList, GL_COMPILE);*/
+            glUseProgram(program);
+            glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, (const GLfloat*)&mvp);
 
-                glUseProgram(program);
-                glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, (const GLfloat*)&mvp);
-
-                for (GLuint vao : vaos) {
-                    glBindVertexArray(vao);
-                    glDrawArrays(GL_QUADS, 0, vertexCount);
-                }
-            /*    glEndList();
+            for (GLuint vao : vaos) {
+                glBindVertexArray(vao);
+                glDrawArrays(GL_QUADS, 0, vertexCount);
             }
-
-            glCallList(displayList);*/
         },
         [&]() {
             glDeleteBuffers(vbos.size(), &vbos[0]);

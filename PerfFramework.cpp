@@ -182,16 +182,13 @@ GLuint MakeShaderProgram(std::vector<std::pair<std::string, GLenum>> shaders) {
 
             // The maxLength includes the NULL character
             std::vector<GLchar> errorLog(maxLength);
-            //errorLog.assign({});
             glGetShaderInfoLog(shaderId, maxLength, &maxLength, &errorLog[0]);
             cerr << "*************************************************" << endl;
             cerr << "Shader \"" << s.first << "\" failed to compile:" << endl;
             cerr << &errorLog[0] << endl;
             cerr << endl;
 
-            // Provide the infolog in whatever manor you deem best.
-            // Exit with failure.
-            glDeleteShader(shaderId); // Don't leak the shader.
+            glDeleteShader(shaderId);
             glDeleteProgram(program);
             return 0;
         }

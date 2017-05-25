@@ -51,7 +51,7 @@ static void BufferFace(vec3 center, vec3 normal, vector<VertexHybrid>& vertices,
     }
 }
 
-// Buffers all faces of a voxel in the given vector
+// Buffers all faces of a voxel in the given vectors (one per face and one per vertex)
 static void BufferVoxel(VoxelSet& voxels, vec3 offset, ivec3 idx, vector<VertexHybrid>& vertices, int& nextIdx,
                         vector<FaceHybrid>& faces, int& nextFIdx) {
     if (!voxels.IsSolid(idx)) {

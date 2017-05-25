@@ -36,7 +36,6 @@ void BufferFaceInstanced(vec3 center, vec3 normal, vec3 color, vector<InstanceIn
         extentsCo = 1.0f;
     }
 
-    //instance.normal = PackVec4(vec4(normal, extentsCo));
     instance.normal = PackVec4(vec4(normal, extentsCo));
     instance.color = PackColor(color);
 
@@ -77,7 +76,6 @@ void BufferVoxelInstanced(VoxelSet& voxels, vec3 offset, ivec3 idx, vector<Insta
 // Buffers an entire voxel model in the given vector
 void BufferVoxelSetInstanced(VoxelSet& voxels, vec3 offset, vector<InstanceInfo>& vertices) {
     int nextIdx = 0;
-    //int nextIdx = vertices.size();
 
     for (int z = 0; z < voxels.size.z; ++z) {
         for (int y = 0; y < voxels.size.y; ++y) {
@@ -168,7 +166,6 @@ size_t MakeInstancedGrid(VoxelSet& model, ivec3 dimensions, vec3 spacing, std::v
                 GLint vNormal = glGetAttribLocation(program, "vNormal");
                 glEnableVertexAttribArray(vNormal);
                 glVertexAttribPointer(vNormal, 4, GL_INT_2_10_10_10_REV, GL_TRUE,
-                //glVertexAttribPointer(vNormal, 4, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE,
                                       sizeof(InstanceInfo),
                                       (void*)offsetof(InstanceInfo, normal));
                 glVertexAttribDivisor(vNormal, 1);
@@ -178,38 +175,6 @@ size_t MakeInstancedGrid(VoxelSet& model, ivec3 dimensions, vec3 spacing, std::v
             }
         }
     }
-
-    /////////////////////////////////////////
-    /*glBindVertexArray(vaos[nextVbo]);
-    EnableQuadAttributes(program, quadVbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbos[nextVbo]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(InstanceInfo) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
-
-    GLint vPosLoc = glGetAttribLocation(program, "vCenter");
-    glEnableVertexAttribArray(vPosLoc);
-    glVertexAttribPointer(vPosLoc, 3, GL_FLOAT, GL_FALSE,
-                          sizeof(InstanceInfo),
-                          (void*)offsetof(InstanceInfo, position));
-    glVertexAttribDivisor(vPosLoc, 1);
-    CheckGLErrors();
-
-    GLint vColorPos = glGetAttribLocation(program, "vColor");
-    glEnableVertexAttribArray(vColorPos);
-    glVertexAttribPointer(vColorPos, 4, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE,
-                          sizeof(InstanceInfo),
-                          (void*)offsetof(InstanceInfo, color));
-    glVertexAttribDivisor(vColorPos, 1);
-    CheckGLErrors();
-
-    GLint vNormal = glGetAttribLocation(program, "vNormal");
-    glEnableVertexAttribArray(vNormal);
-    glVertexAttribPointer(vNormal, 4, GL_INT_2_10_10_10_REV, GL_TRUE,
-                          //glVertexAttribPointer(vNormal, 4, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE,
-                          sizeof(InstanceInfo),
-                          (void*)offsetof(InstanceInfo, normal));
-    glVertexAttribDivisor(vNormal, 1);
-    CheckGLErrors();*/
-    /////////////////////////////////////////
 
     return vertices.size();
 }
@@ -221,7 +186,6 @@ PerfRecord RunInstancedTest(VoxelSet& model, glm::ivec3 gridSize, glm::vec3 voxe
     vector<GLuint> vbos;
     size_t vertexCount;
 
-    GLuint displayList = 0xffffffff;
     PerfRecord record = RunPerf(
         [&]() {
         program = MakeShaderProgram({
@@ -234,22 +198,13 @@ PerfRecord RunInstancedTest(VoxelSet& model, glm::ivec3 gridSize, glm::vec3 voxe
         [&]() {
         mat4 mvp = MakeMvp();
 
-        if (displayList == 0xffffffff) {
-            displayList = glGenLists(1);
-            glNewList(displayList, GL_COMPILE);
+        glUseProgram(program);
+        glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, (const GLfloat*)&mvp);
 
-            glUseProgram(program);
-            glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, (const GLfloat*)&mvp);
-
-            for (GLuint vao : vaos) {
-                glBindVertexArray(vao);
-                glDrawArraysInstanced(GL_QUADS, 0, 4, vertexCount);
-            }
+        for (GLuint vao : vaos) {
+            glBindVertexArray(vao);
+            glDrawArraysInstanced(GL_QUADS, 0, 4, vertexCount);
         }
-
-        glCallList(displayList);
-        //glBindVertexArray(vaos[0]);
-        //glDrawArraysInstanced(GL_QUADS, 0, 4, vertexCount);
     },
         [&]() {
         glDeleteBuffers(vbos.size(), &vbos[0]);

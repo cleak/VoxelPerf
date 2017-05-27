@@ -7,7 +7,10 @@ using namespace std;
 
 #pragma pack(push, 1)
 struct VertexHybrid {
-    vec3 position;
+    //vec3 position;
+    uint8_t x;
+    uint8_t y;
+    uint8_t z;
 };
 
 struct FaceHybrid {
@@ -40,7 +43,12 @@ static void BufferFace(vec3 center, vec3 normal, vector<VertexHybrid>& vertices,
 
         VertexHybrid v;
         //v.color = PackColor(color);
-        v.position = center + (d1 * w.x + d2 * w.y) / 2.0f * VOXEL_SIZE;
+        //v.position = center + (d1 * w.x + d2 * w.y) / 2.0f * VOXEL_SIZE;
+        vec3 pos = center + (d1 * w.x + d2 * w.y) / 2.0f * VOXEL_SIZE;
+
+        v.x = (uint8_t)round(pos.x / VOXEL_SIZE);
+        v.y = (uint8_t)round(pos.y / VOXEL_SIZE);
+        v.z = (uint8_t)round(pos.z / VOXEL_SIZE);
 
         if (nextIdx >= vertices.size()) {
             vertices.push_back(v);
@@ -58,16 +66,10 @@ static void BufferVoxel(VoxelSet& voxels, vec3 offset, ivec3 idx, vector<VertexH
         return;
     }
 
-    FaceHybrid f;
-    f.color = PackColor(voxels.At(idx));
-    if (nextFIdx >= faces.size()) {
-        faces.push_back(f);
-    } else {
-        faces[nextFIdx] = f;
-    }
-    nextFIdx++;
+    
 
-    vec3 center = offset + vec3(idx) * VOXEL_SIZE + vec3(VOXEL_SIZE, VOXEL_SIZE, VOXEL_SIZE) / 2.0f;
+    //vec3 center = offset + vec3(idx) * VOXEL_SIZE + vec3(VOXEL_SIZE, VOXEL_SIZE, VOXEL_SIZE) / 2.0f;
+    vec3 center = vec3(idx) * VOXEL_SIZE + vec3(VOXEL_SIZE, VOXEL_SIZE, VOXEL_SIZE) / 2.0f;
 
     vector<ivec3> normals = {
         { 1, 0, 0 },
@@ -78,10 +80,21 @@ static void BufferVoxel(VoxelSet& voxels, vec3 offset, ivec3 idx, vector<VertexH
         { 0, 0,-1 },
     };
 
+    FaceHybrid f;
+    f.color = PackColor(voxels.At(idx));
+
     for (auto& n : normals) {
         if (voxels.IsSolid(idx + n)) {
             continue;
         }
+        
+        if (nextFIdx >= faces.size()) {
+            faces.push_back(f);
+        } else {
+            faces[nextFIdx] = f;
+        }
+        nextFIdx++;
+
         BufferFace(center, vec3(n), vertices, nextIdx);
     }
 }
@@ -131,14 +144,15 @@ static size_t MakeVaoGrid(VoxelSet& model, ivec3 dimensions, vec3 spacing, std::
 
                 glBufferData(GL_ARRAY_BUFFER,
                              sizeof(VertexHybrid) * vertices.size() + sizeof(FaceHybrid) * faces.size(),
-                             nullptr, GL_STATIC_DRAW);
+                             (void*)0, GL_STATIC_DRAW);
+                             //(void*)0, GL_DYNAMIC_DRAW);
 
-                glBufferSubData(GL_ARRAY_BUFFER, (GLintptr)0, sizeof(VertexHybrid) * vertices.size(), &vertices[0]);
-                glBufferSubData(GL_ARRAY_BUFFER, (GLintptr)colorsOffset, sizeof(FaceHybrid) * faces.size(), &faces[0]);
+                glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(VertexHybrid) * vertices.size(), &vertices[0]);
+                glBufferSubData(GL_ARRAY_BUFFER, colorsOffset, sizeof(FaceHybrid) * faces.size(), &faces[0]);
 
                 GLint vPosLoc = glGetAttribLocation(program, "vPos");
                 glEnableVertexAttribArray(vPosLoc);
-                glVertexAttribPointer(vPosLoc, 3, GL_FLOAT, GL_FALSE,
+                glVertexAttribPointer(vPosLoc, 3, GL_BYTE, GL_FALSE,
                                       sizeof(VertexHybrid), (void*)0);
                 CheckGLErrors();
 
@@ -147,7 +161,7 @@ static size_t MakeVaoGrid(VoxelSet& model, ivec3 dimensions, vec3 spacing, std::
                 glVertexAttribPointer(vColorPos, 4, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE,
                                       sizeof(FaceHybrid),
                                       (void*)colorsOffset);
-                //glVertexAttribDivisor(vColorPos, 1);
+                glVertexAttribDivisor(vColorPos, 1);
                 CheckGLErrors();
 
                 nextVbo++;
@@ -161,18 +175,35 @@ static size_t MakeVaoGrid(VoxelSet& model, ivec3 dimensions, vec3 spacing, std::
 PerfRecord RunHybridInstancedTest(VoxelSet & model, glm::ivec3 gridSize, glm::vec3 voxelSpacing) {
     GLuint program;
     GLint mvpLoc;
+    GLint offsetLoc;
     vector<GLuint> vaos;
     vector<GLuint> vbos;
     size_t vertexCount;
+    vector<vec3> offsets;
 
     PerfRecord record = RunPerf(
         [&]() {
         program = MakeShaderProgram({
-            { "Shaders/colored.vert", GL_VERTEX_SHADER },
+            { "Shaders/colored_hybrid.vert", GL_VERTEX_SHADER },
             { "Shaders/colored.frag", GL_FRAGMENT_SHADER },
         });
         mvpLoc = glGetUniformLocation(program, "mvp");
+        offsetLoc = glGetUniformLocation(program, "offset");
         vertexCount = MakeVaoGrid(model, gridSize, voxelSpacing, vaos, vbos, program);
+
+        offsets.resize(vaos.size());
+        int nextOffsetIdx = 0;
+        for (int z = 0; z < gridSize.z; ++z) {
+            for (int y = 0; y < gridSize.y; ++y) {
+                for (int x = 0; x < gridSize.x; ++x) {
+                    ivec3 idx(x, y, z);
+                    vec3 offset = vec3(idx) * voxelSpacing;
+                    offset -= vec3(0, gridSize.y, 0) * voxelSpacing / 2.0f;
+                    offsets[nextOffsetIdx] = offset;
+                    nextOffsetIdx++;
+                }
+            }
+        }
     },
         [&]() {
         mat4 mvp = MakeMvp();
@@ -180,8 +211,14 @@ PerfRecord RunHybridInstancedTest(VoxelSet & model, glm::ivec3 gridSize, glm::ve
         glUseProgram(program);
         glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, (const GLfloat*)&mvp);
 
-        for (GLuint vao : vaos) {
+        /*for (GLuint vao : vaos) {
             glBindVertexArray(vao);
+            glDrawArrays(GL_QUADS, 0, vertexCount);
+        }*/
+
+        for (int i = 0; i < vaos.size(); ++i) {
+            glUniform3fv(offsetLoc, 1, (const GLfloat*)&offsets[i]);
+            glBindVertexArray(vaos[i]);
             glDrawArrays(GL_QUADS, 0, vertexCount);
         }
     },

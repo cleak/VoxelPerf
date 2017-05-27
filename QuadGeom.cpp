@@ -10,12 +10,31 @@ using namespace std;
 
 #pragma pack(push, 1)
 struct PointQuad {
-    vec3 position;
-    PackedColor color;
+    //vec3 position;
+    uint8_t x;
+    uint8_t y;
+    uint8_t z;
+    //uint8_t pad0;
+
+    //PackedColor color;
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
 
     uint8_t faceIdx;
 };
 #pragma pack(pop)
+
+// Stores information about the location and size of each set of layers of a voxel object
+struct LayersInfo {
+    uint16_t layerStartIdx[6];
+    uint16_t layerSize[6];
+};
+
+struct LayeredVertexBuffer {
+    int nextLayerIdx[6] = {};
+    vector<PointQuad> layer[6] = {};
+};
 
 int FloatToPackedInt(float f) {
     if (f == 1.0f) {
@@ -39,29 +58,26 @@ PackedVec PackVec(vec3 v) {
     return p;
 }
 
-void BufferPointQuadFace(vec3 center, vec3 normal, vec3 color, vector<PointQuad>& vertices, int& nextIdx,
+uint8_t RoundColor(float c) {
+    return (uint8_t)round(c * 0xff);
+}
+
+void BufferPointQuadFace(ivec3 voxIdx, ivec3 normal, vec3 color, vector<PointQuad>& vertices, int& nextIdx,
                          uint8_t faceIdx) {
-    // Center of voxel to center of face
-    center += vec3(normal) * VOXEL_SIZE / 2.0f;
 
-    vec3 d1 = -vec3(normal.z, normal.x, normal.y);
-    vec3 d2 = -vec3(normal.y, normal.z, normal.x);
-
-    vector<vec2> weights = {
-        {-1, -1 },
-        { 1, -1 },
-        { 1,  1 },
-        {-1,  1 },
-    };
-
-    // Reverse winding order for negative normals
-    if (normal.x < 0 || normal.y < 0 || normal.z < 0) {
-        std::swap(d1, d2);
+    if (normal.x > 0 || normal.y > 0 || normal.z > 0) {
+        voxIdx += normal;
     }
 
     PointQuad p;
-    p.color = PackColor(color);
-    p.position = center;
+    p.r = RoundColor(color.r);
+    p.g = RoundColor(color.g);
+    p.b = RoundColor(color.b);
+    
+    p.x = voxIdx.x;
+    p.y = voxIdx.y;
+    p.z = voxIdx.z;
+
     p.faceIdx = faceIdx;
     
     if (nextIdx >= vertices.size()) {
@@ -73,19 +89,20 @@ void BufferPointQuadFace(vec3 center, vec3 normal, vec3 color, vector<PointQuad>
 }
 
 // Buffers all faces of a voxel in the given vector
-void BufferPointQuadVoxel(VoxelSet& voxels, vec3 offset, ivec3 idx, vector<PointQuad>& vertices, int& nextIdx) {
+void BufferPointQuadVoxel(VoxelSet& voxels, vec3 offset, ivec3 idx, LayeredVertexBuffer& vertexBuffers) {
     if (!voxels.IsSolid(idx)) {
         return;
     }
 
     vec3 color = voxels.At(idx);
-    vec3 center = offset + vec3(idx) * VOXEL_SIZE + vec3(VOXEL_SIZE, VOXEL_SIZE, VOXEL_SIZE) / 2.0f;
 
     vector<ivec3> normals = {
         { 1, 0, 0 },
         {-1, 0, 0 },
+        
         { 0, 1, 0 },
         { 0,-1, 0 },
+
         { 0, 0, 1 },
         { 0, 0,-1 },
     };
@@ -97,28 +114,35 @@ void BufferPointQuadVoxel(VoxelSet& voxels, vec3 offset, ivec3 idx, vector<Point
         if (voxels.IsSolid(idx + normals[i])) {
             continue;
         }
-        BufferPointQuadFace(center, vec3(normals[i]), color, vertices, nextIdx, (uint8_t)i);
+        BufferPointQuadFace(idx, normals[i], color, vertexBuffers.layer[i], vertexBuffers.nextLayerIdx[i], (uint8_t)i);
     }
 }
 
 // Buffers an entire voxel model in the given vector
-void BufferVoxelSetPointQuads(VoxelSet& voxels, vec3 offset, vector<PointQuad>& vertices) {
-    int nextIdx = 0;
+void BufferVoxelSetPointQuads(VoxelSet& voxels, vec3 offset, LayeredVertexBuffer& vertexBuffers) {
+
+    for (int i = 0; i < 6; ++i) {
+        vertexBuffers.nextLayerIdx[i] = 0;
+    }
 
     for (int z = 0; z < voxels.size.z; ++z) {
         for (int y = 0; y < voxels.size.y; ++y) {
             for (int x = 0; x < voxels.size.x; ++x) {
-                BufferPointQuadVoxel(voxels, offset, ivec3(x, y, z), vertices, nextIdx);
+                BufferPointQuadVoxel(voxels, offset, ivec3(x, y, z), vertexBuffers);
             }
         }
     }
 }
 
-size_t MakeGridPointQuads(VoxelSet& model, ivec3 dimensions, vec3 spacing, std::vector<GLuint>& vaos,
-                      std::vector<GLuint>& vbos, GLuint program) {
-    vbos.resize(dimensions.x * dimensions.y * dimensions.z);
-    vaos.resize(dimensions.x * dimensions.y * dimensions.z);
+void MakeGridPointQuads(VoxelSet& model, ivec3 dimensions, vec3 spacing, std::vector<GLuint>& vaos,
+                      std::vector<GLuint>& vbos, std::vector<LayersInfo>& layersInfo, GLuint program) {
 
+    size_t modelCount = dimensions.x * dimensions.y * dimensions.z;
+
+    vbos.resize(modelCount);
+    vaos.resize(modelCount);
+    layersInfo.resize(modelCount);
+    
     glGenBuffers(vbos.size(), &vbos[0]);
     CheckGLErrors();
 
@@ -127,32 +151,52 @@ size_t MakeGridPointQuads(VoxelSet& model, ivec3 dimensions, vec3 spacing, std::
 
     int nextVbo = 0;
 
-    vector<PointQuad> vertices;
+    LayeredVertexBuffer vertexBuffers;
 
     for (int z = 0; z < dimensions.z; ++z) {
         for (int y = 0; y < dimensions.y; ++y) {
             for (int x = 0; x < dimensions.x; ++x) {
+
                 ivec3 idx(x, y, z);
                 vec3 offset = vec3(idx) * spacing;
                 offset -= vec3(0, dimensions.y, 0) * spacing / 2.0f;
-                BufferVoxelSetPointQuads(model, offset, vertices);
+
+                BufferVoxelSetPointQuads(model, offset, vertexBuffers);
 
                 glBindVertexArray(vaos[nextVbo]);
                 glBindBuffer(GL_ARRAY_BUFFER, vbos[nextVbo]);
-                glBufferData(GL_ARRAY_BUFFER, sizeof(PointQuad) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
+                
+                int totalQuads = 0;
+                for (int i = 0; i < 6; ++i) {
+                    totalQuads += vertexBuffers.layer[i].size();
+                }
+
+                glBufferData(GL_ARRAY_BUFFER, sizeof(PointQuad) * totalQuads, nullptr, GL_STATIC_DRAW);
+
+                layersInfo[nextVbo].layerStartIdx[0] = 0;
+
+                for (int i = 0; i < 6; ++i) {
+                    layersInfo[nextVbo].layerSize[i] = vertexBuffers.layer[i].size();
+                    if (i > 0) {
+                        layersInfo[nextVbo].layerStartIdx[i] = layersInfo[nextVbo].layerStartIdx[i - 1] + layersInfo[nextVbo].layerSize[i];
+                    }
+
+                    glBufferSubData(GL_ARRAY_BUFFER, layersInfo[nextVbo].layerStartIdx[i] * sizeof(PointQuad),
+                                    layersInfo[nextVbo].layerSize[i] * sizeof(PointQuad), &vertexBuffers.layer[i][0]);
+                }
 
                 GLint vPosLoc = glGetAttribLocation(program, "vPos");
                 glEnableVertexAttribArray(vPosLoc);
-                glVertexAttribPointer(vPosLoc, 3, GL_FLOAT, GL_FALSE,
+                glVertexAttribPointer(vPosLoc, 3, GL_BYTE, GL_FALSE,
                                       sizeof(PointQuad),
-                                      (void*)offsetof(PointQuad, position));
+                                      (void*)offsetof(PointQuad, x));
                 CheckGLErrors();
 
                 GLint vColorPos = glGetAttribLocation(program, "vColor");
                 glEnableVertexAttribArray(vColorPos);
-                glVertexAttribPointer(vColorPos, 4, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE,
-                                      sizeof(PointQuad),
-                                      (void*)offsetof(PointQuad, color));
+                glVertexAttribPointer(vColorPos, 3, GL_UNSIGNED_BYTE, GL_TRUE,
+                sizeof(PointQuad),
+                (void*)offsetof(PointQuad, r));
                 CheckGLErrors();
 
                 GLint vExtent1 = glGetAttribLocation(program, "vFaceIdx");
@@ -166,16 +210,31 @@ size_t MakeGridPointQuads(VoxelSet& model, ivec3 dimensions, vec3 spacing, std::
             }
         }
     }
-
-    return vertices.size();
 }
 
 PerfRecord RunQuadGeometryShaderTest(VoxelSet & model, glm::ivec3 gridSize, glm::vec3 voxelSpacing) {
     GLuint program;
+    
     GLint mvpLoc;
+    GLint offsetLoc;
+
     vector<GLuint> vaos;
     vector<GLuint> vbos;
-    size_t vertexCount;
+
+    vector<vec3> offsets;
+
+    std::vector<LayersInfo> layersInfo;
+
+    vector<ivec3> normals = {
+        { 1, 0, 0 },
+        { -1, 0, 0 },
+
+        { 0, 1, 0 },
+        { 0,-1, 0 },
+
+        { 0, 0, 1 },
+        { 0, 0,-1 },
+    };
 
     PerfRecord record = RunPerf(
         [&]() {
@@ -186,9 +245,24 @@ PerfRecord RunQuadGeometryShaderTest(VoxelSet & model, glm::ivec3 gridSize, glm:
             { "Shaders/point_quads.geom", GL_GEOMETRY_SHADER },
         });
         mvpLoc = glGetUniformLocation(program, "mvp");
-        vertexCount = MakeGridPointQuads(model, gridSize, voxelSpacing, vaos, vbos, program);
+        offsetLoc = glGetUniformLocation(program, "vOffset");
+        MakeGridPointQuads(model, gridSize, voxelSpacing, vaos, vbos, layersInfo, program);
+
+        offsets.resize(vaos.size());
+        int nextOffsetIdx = 0;
+        for (int z = 0; z < gridSize.z; ++z) {
+            for (int y = 0; y < gridSize.y; ++y) {
+                for (int x = 0; x < gridSize.x; ++x) {
+                    ivec3 idx(x, y, z);
+                    vec3 offset = vec3(idx) * voxelSpacing;
+                    offset -= vec3(0, gridSize.y, 0) * voxelSpacing / 2.0f;
+                    offsets[nextOffsetIdx] = offset;
+                    nextOffsetIdx++;
+                }
+            }
+        }
     },
-        [&]() {
+    [&]() {
         // Draw
         mat4 mvp = MakeMvp();
         //PrintMatrix(mvp);
@@ -196,12 +270,28 @@ PerfRecord RunQuadGeometryShaderTest(VoxelSet & model, glm::ivec3 gridSize, glm:
         glUseProgram(program);
         glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, (const GLfloat*)&mvp);
 
-        for (GLuint vao : vaos) {
-            glBindVertexArray(vao);
-            glDrawArrays(GL_POINTS, 0, vertexCount);
+        for (int i = 0; i < vaos.size(); ++i) {
+            vec3 offset = offsets[i];
+            glUniform3fv(offsetLoc, 1, (const GLfloat*)&offset);
+            glBindVertexArray(vaos[i]);
+
+            for (int j = 0; j < 6; ++j) {
+                int compareIdx = j / 2;
+                float thresh = offset[compareIdx] + voxelSpacing[compareIdx] / 2.0f;
+                
+                float normalDir = normals[j][compareIdx];
+                thresh += normalDir * voxelSpacing[compareIdx] / 2.0f;
+
+                // Cull layers that are entirely backfacing
+                if (normalDir * thresh > normalDir * CameraPosition()[compareIdx]) {
+                    continue;
+                }
+
+                glDrawArrays(GL_POINTS, layersInfo[i].layerStartIdx[j], layersInfo[i].layerSize[j]);
+            }
         }
     },
-        [&]() {
+    [&]() {
         // Teardown
         glDeleteBuffers(vbos.size(), &vbos[0]);
         CheckGLErrors();

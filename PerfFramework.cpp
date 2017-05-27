@@ -132,9 +132,15 @@ void CheckGLErrors() {
     }
 }
 
+glm::vec3 CameraPosition() {
+    return vec3(-16, 0, -16);
+}
+
 mat4 MakeModelView() {
-    mat4 view = lookAt(vec3(-16, 0, -16), vec3(0, 0, 0), vec3(0, 1, 0));
-    //* glm::rotate((float)glfwGetTime(), vec3(0, 1, 0));
+    mat4 view = lookAt(CameraPosition(), vec3(0, 0, 0), vec3(0, 1, 0));
+    if (ROTATE) {
+        view *= glm::rotate((float)glfwGetTime(), vec3(0, 1, 0));
+    }
     return view;
 }
 
@@ -143,6 +149,7 @@ mat4 MakeProjection() {
     glfwGetFramebufferSize(window, &width, &height);
     float fovY = radians(45.0f);
     mat4 projection = perspective(fovY, (float)width / (float)height, 1.0f, 10000.0f);
+
     return projection;
 }
 

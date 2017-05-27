@@ -33,6 +33,7 @@ PackedColor PackColor(glm::vec3 color);
 // How many frames to record and average for a single sample
 #define FRAMES_TO_RECORD 128
 
+#define ROTATE false
 // Record of a single performance sample
 struct PerfRecord {
     size_t  gpuMemUsed;
@@ -52,6 +53,8 @@ PerfRecord RunPerf(std::function<void()> setupFn, std::function<void()> drawFn,
                    std::function<void()> teardownFn);
 
 void CheckGLErrors();
+
+glm::vec3 CameraPosition();
 
 // View/projection/model matrix methods
 glm::mat4 MakeModelView();

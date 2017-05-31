@@ -51,6 +51,9 @@
     <ClCompile Include="HybridInstanced.cpp">
       <Filter>Techniques\Src</Filter>
     </ClCompile>
+    <ClCompile Include="SignedDistanceFields.cpp">
+      <Filter>Techniques\Src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PerfTimer.h">
@@ -81,6 +84,9 @@
       <Filter>Techniques</Filter>
     </ClInclude>
     <ClInclude Include="HybridInstanced.h">
+      <Filter>Techniques</Filter>
+    </ClInclude>
+    <ClInclude Include="SignedDistanceFields.h">
       <Filter>Techniques</Filter>
     </ClInclude>
   </ItemGroup>

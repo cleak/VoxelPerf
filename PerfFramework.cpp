@@ -62,11 +62,13 @@ PerfRecord RunPerf(std::function<void()> setupFn, std::function<void()> drawFn, 
     glEnable(GL_DEPTH_TEST);
     glCullFace(GL_BACK);
     glEnable(GL_CULL_FACE);
+	CheckGLErrors();
 
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
     glViewport(0, 0, width, height);
     glClearColor(0.1f, 0.12f, 0.6f, 1.0f);
+	CheckGLErrors();
 
     size_t gpuFreeBefore = GetFreeMemNvidia();
     size_t memUsedBefore = GetMainMemUsage();
@@ -145,16 +147,36 @@ mat4 MakeModelView() {
 }
 
 mat4 MakeProjection() {
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-    float fovY = radians(45.0f);
-    mat4 projection = perspective(fovY, (float)width / (float)height, 1.0f, 10000.0f);
+    mat4 projection = perspective(GetFovY(), GetAspectRatio(), 1.0f, 10000.0f);
 
     return projection;
 }
 
 mat4 MakeMvp() {
     return MakeProjection() * MakeModelView();
+}
+
+float GetAspectRatio() {
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    return (float)width / (float)height;
+}
+
+float GetFovY() {
+	return radians(45.0f);
+}
+
+glm::vec3 GetNearPlane() {
+    float nearZ = 1.0f;
+
+    float top = nearZ / sin(GetFovY());
+    float bottom = -top;
+
+    float left = bottom * GetAspectRatio();
+    float right = top * GetAspectRatio();
+
+    vec3 nearPlane(right - left, top - bottom, nearZ);
+	return nearPlane;
 }
 
 void PrintMatrix(glm::mat4 matrix) {

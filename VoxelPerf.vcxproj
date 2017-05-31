@@ -70,11 +70,11 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>3rdParty\glew-2.0.0\include;3rdParty\glfw-3.2.1\include;C:\Users\Caleb\Documents\Visual Studio 2017\Projects\VoxelPerf\3rdParty\glm;$(IncludePath)</IncludePath>
+    <IncludePath>3rdParty\glew-2.0.0\include;3rdParty\glfw-3.2.1\include;3rdParty\glm;$(IncludePath)</IncludePath>
     <LibraryPath>3rdParty\glew-2.0.0\lib\Release\x64;3rdParty\glfw-3.2.1\lib-vc2015;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>3rdParty\glew-2.0.0\include;3rdParty\glfw-3.2.1\include;C:\Users\Caleb\Documents\Visual Studio 2017\Projects\VoxelPerf\3rdParty\glm;$(IncludePath)</IncludePath>
+    <IncludePath>3rdParty\glew-2.0.0\include;3rdParty\glfw-3.2.1\include;3rdParty\glm;$(IncludePath)</IncludePath>
     <LibraryPath>3rdParty\glew-2.0.0\lib\Release\x64;3rdParty\glfw-3.2.1\lib-vc2015;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -131,6 +131,7 @@
     <ClCompile Include="PerfFramework.cpp" />
     <ClCompile Include="PerfTimer.cpp" />
     <ClCompile Include="QuadGeom.cpp" />
+    <ClCompile Include="SignedDistanceFields.cpp" />
     <ClCompile Include="Vaos.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -142,6 +143,7 @@
     <ClInclude Include="PerfFramework.h" />
     <ClInclude Include="PerfTimer.h" />
     <ClInclude Include="QuadGeom.h" />
+    <ClInclude Include="SignedDistanceFields.h" />
     <ClInclude Include="Vaos.h" />
     <ClInclude Include="Voxels.h" />
   </ItemGroup>

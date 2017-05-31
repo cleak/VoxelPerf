@@ -4,17 +4,19 @@
 #include <functional>
 #include <stdlib.h>
 #include <stdio.h>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <string>
 #include <vector>
 
 #include <glm/glm.hpp>
-
-#include <fstream>
-#include <iostream>
 
 #include "PerfFramework.h"
 #include "PerfTimer.h"
 #include "Voxels.h"
 
+// Techniquess
 #include "DisplayLists.h"
 #include "Vaos.h"
 #include "GeometryShader.h"
@@ -22,12 +24,54 @@
 #include "Instanced.h"
 #include "CompactDisplayLists.h"
 #include "HybridInstanced.h"
+#include "SignedDistanceFields.h"
 
 using namespace glm;
 using namespace std;
 
+typedef PerfRecord(*PerfTestFn)(VoxelSet& model, glm::ivec3 gridSize, glm::vec3 voxelSpacing);
+
+static map<string, PerfTestFn> tests = {
+	{ "dl", RunDisplayListsTest },
+	{ "cdl", RunCompactDisplayListsTest },
+	{ "vao", RunVaosTest },
+	{ "gs", RunGeometryShaderTest },
+	{ "qgs", RunQuadGeometryShaderTest },
+	{ "inst", RunInstancedTest },
+	{ "hyi", RunHybridInstancedTest },
+	{ "sdf", RunSdfTest },
+};
+
+template <typename T>
+string Join(T iterable, string delim) {
+	int count = 0;
+	string result = "";
+	for (auto& t : iterable) {
+		if (count > 0) {
+			result += delim;
+		}
+		result += t;
+		++count;
+	}
+	return result;
+}
+
+template <typename T>
+string JoinFirst(T iterable, string delim) {
+	int count = 0;
+	string result = "";
+	for (auto& t : iterable) {
+		if (count > 0) {
+			result += delim;
+		}
+		result += t.first;
+		++count;
+	}
+	return result;
+}
+
 void Usage() {
-    cerr << "VoxelPerf [dl|cdl|vao|gs|qgs|inst] <width> <height> <depth>" << endl;
+	cerr << "VoxelPerf [" << JoinFirst(tests, "|") << "] <width> <height> <depth>" << endl;
 }
 
 int main(int argc, char** argv) {
@@ -37,9 +81,7 @@ int main(int argc, char** argv) {
     }
 
     string testType = string(argv[1]);
-    if (testType != "dl" && testType != "vao" && testType != "gs"
-        && testType != "qgs" && testType != "inst" && testType != "cdl"
-        && testType != "hyi") {
+    if (!tests.count(testType)) {
         Usage();
         exit(EXIT_FAILURE);
     }
@@ -56,14 +98,6 @@ int main(int argc, char** argv) {
     VoxelSet sphere({ 32,32,32 });
     sphere.MakeSphere();
 
-    bool runDlPerf = (testType == "dl");
-    bool runCdlPerf = (testType == "cdl");
-    bool runVaoPerf = (testType == "vao");
-    bool runGsPerf = (testType == "gs");
-    bool runQgsPerf = (testType == "qgs");
-    bool runInstancedPerf = (testType == "inst");
-    bool runHyInstancedPerf = (testType == "hyi");
-
     ivec3 voxelGrid(w, h, d);
 
     vec3 voxelSpacing(32, 32, 32);
@@ -71,42 +105,7 @@ int main(int argc, char** argv) {
 
     int numObjects = voxelGrid.x * voxelGrid.y * voxelGrid.z;
 
-    PerfRecord record;
-
-    // Test display list perf
-    if (runDlPerf) {
-        record = RunDisplayListsTest(sphere, voxelGrid, voxelSpacing);
-    }
-
-    // Test compact display list perf
-    if (runCdlPerf) {
-        record = RunCompactDisplayListsTest(sphere, voxelGrid, voxelSpacing);
-    }
-
-    // Test VAO perf
-    if (runVaoPerf) {
-        record = RunVaosTest(sphere, voxelGrid, voxelSpacing);
-    }
-
-    // Test geometry shader perf
-    if (runGsPerf) {
-        record = RunGeometryShaderTest(sphere, voxelGrid, voxelSpacing);
-    }
-
-    // Test quad-only geometry shader perf
-    if (runQgsPerf) {
-        record = RunQuadGeometryShaderTest(sphere, voxelGrid, voxelSpacing);
-    }
-
-    // Test quad-only geometry shader perf
-    if (runInstancedPerf) {
-        record = RunInstancedTest(sphere, voxelGrid, voxelSpacing);
-    }
-
-    // Test quad-only geometry shader perf
-    if (runHyInstancedPerf) {
-        record = RunHybridInstancedTest(sphere, voxelGrid, voxelSpacing);
-    }
+    PerfRecord record = tests[testType](sphere, voxelGrid, voxelSpacing);
 
     cout << testType << ", " << numObjects << ", " << record.averageFrameTimeMs << ", " << record.gpuMemUsed << ", " << record.mainMemUsed << endl;
     exit(EXIT_SUCCESS);

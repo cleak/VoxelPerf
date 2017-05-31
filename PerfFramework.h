@@ -34,6 +34,8 @@ PackedColor PackColor(glm::vec3 color);
 #define FRAMES_TO_RECORD 128
 
 #define ROTATE false
+//#define ROTATE true
+
 // Record of a single performance sample
 struct PerfRecord {
     size_t  gpuMemUsed;
@@ -60,6 +62,14 @@ glm::vec3 CameraPosition();
 glm::mat4 MakeModelView();
 glm::mat4 MakeProjection();
 glm::mat4 MakeMvp();
+
+float GetAspectRatio();
+
+// Gets the vertical field of view in radians
+float GetFovY();
+
+// Gets the near plane where x and y store the width and height, and z stores the depth.
+glm::vec3 GetNearPlane();
 
 void PrintMatrix(glm::mat4 matrix);
 

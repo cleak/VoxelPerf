@@ -31,7 +31,7 @@ PackedColor PackColor(glm::vec3 color);
 #define FRAMES_TO_DISCARD 32
 
 // How many frames to record and average for a single sample
-#define FRAMES_TO_RECORD 128
+#define FRAMES_TO_RECORD 128128128
 
 #define ROTATE false
 //#define ROTATE true

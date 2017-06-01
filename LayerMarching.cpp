@@ -1,4 +1,4 @@
-#include "SignedDistanceFields.h"
+#include "LayerMarching.h"
 
 #include <array>
 #include <iostream>
@@ -11,10 +11,9 @@ using namespace std;
 
 #pragma pack(push, 1)
 static struct SdfVertex {
-	SdfVertex(vec3 p) : position(p)
-	{}
+    SdfVertex(vec3 p) : position(p) {}
 
-	vec3 position;
+    vec3 position;
 };
 #pragma pack(pop)
 
@@ -64,7 +63,7 @@ static GLuint BufferCube(float cubeWidth, GLuint program) {
     for (auto& n : normals) {
         BufferCubeFace(center, vec3(n), cubeWidth, vertices);
     }
-    
+
     GLuint vao;
     GLuint vbo;
     glGenBuffers(1, &vbo);
@@ -89,35 +88,35 @@ static GLuint BufferCube(float cubeWidth, GLuint program) {
 }
 
 static void MakeSdfQuad(VoxelSet& model, ivec3 dimensions, vec3 spacing, GLuint& vao,
-	GLuint& vbo, GLuint program) {
+    GLuint& vbo, GLuint program) {
 
-	size_t modelCount = dimensions.x * dimensions.y * dimensions.z;
+    size_t modelCount = dimensions.x * dimensions.y * dimensions.z;
 
 
-	glGenBuffers(1, &vbo);
-	CheckGLErrors();
+    glGenBuffers(1, &vbo);
+    CheckGLErrors();
 
-	glGenVertexArrays(1, &vao);
-	CheckGLErrors();
+    glGenVertexArrays(1, &vao);
+    CheckGLErrors();
 
-	glBindVertexArray(vao);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	
-	array<SdfVertex, 4> vertices = { {
-		{ vec3(-1, -1, 0) },
-		{ vec3( 1, -1, 0) },
-		{ vec3( 1,  1, 0) },
-		{ vec3(-1,  1, 0) },
-	} };
-	
-	glBufferData(GL_ARRAY_BUFFER, sizeof(SdfVertex) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-	GLint vPosLoc = glGetAttribLocation(program, "vPos");
-	glEnableVertexAttribArray(vPosLoc);
-	glVertexAttribPointer(vPosLoc, 3, GL_FLOAT, GL_FALSE,
-		sizeof(SdfVertex),
-		(void*)offsetof(SdfVertex, position));
-	CheckGLErrors();
+    array<SdfVertex, 4> vertices = { {
+        { vec3(-1, -1, 0) },
+        { vec3(1, -1, 0) },
+        { vec3(1,  1, 0) },
+        { vec3(-1,  1, 0) },
+        } };
+
+    glBufferData(GL_ARRAY_BUFFER, sizeof(SdfVertex) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
+
+    GLint vPosLoc = glGetAttribLocation(program, "vPos");
+    glEnableVertexAttribArray(vPosLoc);
+    glVertexAttribPointer(vPosLoc, 3, GL_FLOAT, GL_FALSE,
+        sizeof(SdfVertex),
+        (void*)offsetof(SdfVertex, position));
+    CheckGLErrors();
 }
 
 static uint8_t RoundByteF(float f) {
@@ -179,7 +178,7 @@ static GLuint VoxelsToTexture(VoxelSet & voxels) {
     return tex;
 }
 
-PerfRecord RunSdfTest(VoxelSet & model, glm::ivec3 gridSize, glm::vec3 voxelSpacing) {
+PerfRecord RunLayerMarchingTest(VoxelSet & model, glm::ivec3 gridSize, glm::vec3 voxelSpacing) {
     GLuint program;
 
     GLint mvpLoc;
@@ -189,28 +188,28 @@ PerfRecord RunSdfTest(VoxelSet & model, glm::ivec3 gridSize, glm::vec3 voxelSpac
     GLint nearDimLoc;
     GLint offsetLoc;
 
-	GLuint vao;
-	GLuint vbo;
+    GLuint vao;
+    GLuint vbo;
 
     GLuint cubeVao;
 
     vector<GLuint> textures;
     vector<vec3> offsets;
 
-	PerfRecord record = RunPerf(
-		[&]() {
-		// Setup
-		program = MakeShaderProgram({
-			{ "Shaders/sdf.vert", GL_VERTEX_SHADER },
-			{ "Shaders/sdf.frag", GL_FRAGMENT_SHADER },
-		});
+    PerfRecord record = RunPerf(
+        [&]() {
+        // Setup
+        program = MakeShaderProgram({
+            { "Shaders/sdf.vert", GL_VERTEX_SHADER },
+            { "Shaders/layer_march.frag", GL_FRAGMENT_SHADER },
+        });
         mvpLoc = glGetUniformLocation(program, "mvp");
         mvInvLoc = glGetUniformLocation(program, "mvInv");
         mvLoc = glGetUniformLocation(program, "mv");
         nearDimLoc = glGetUniformLocation(program, "nearPlaneDim");
         nearDistLoc = glGetUniformLocation(program, "nearPlaneDist");
         offsetLoc = glGetUniformLocation(program, "offset");
-		MakeSdfQuad(model, gridSize, voxelSpacing, vao, vbo, program);
+        MakeSdfQuad(model, gridSize, voxelSpacing, vao, vbo, program);
         cubeVao = BufferCube(32.0f * VOXEL_SIZE, program);
 
         int nextOffsetIdx = 0;
@@ -229,20 +228,20 @@ PerfRecord RunSdfTest(VoxelSet & model, glm::ivec3 gridSize, glm::vec3 voxelSpac
                 }
             }
         }
-	},
-		[&]() {
-		// Draw
+    },
+        [&]() {
+        // Draw
         mat4 mvp = MakeMvp();
         mat4 mv = MakeModelView();
         mat4 mvInv = glm::inverse(mv);
 
         vec3 nearPlane = GetNearPlane();
 
-		glUseProgram(program);
+        glUseProgram(program);
         glUniform2fv(nearDimLoc, 1, &nearPlane.x);
         glUniform1fv(nearDistLoc, 1, &nearPlane.z);
         glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, (const GLfloat*)&mvp);
-        
+
         glUniformMatrix4fv(mvInvLoc, 1, GL_FALSE, (const GLfloat*)&mvInv);
         glUniformMatrix4fv(mvLoc, 1, GL_FALSE, (const GLfloat*)&mv);
 
@@ -253,21 +252,21 @@ PerfRecord RunSdfTest(VoxelSet & model, glm::ivec3 gridSize, glm::vec3 voxelSpac
             glBindTexture(GL_TEXTURE_3D, textures[i]);
             glDrawArrays(GL_QUADS, 0, 24);
         }
-	},
-		[&]() {
-		// Teardown
-		glDeleteBuffers(1, &vbo);
-		CheckGLErrors();
+    },
+        [&]() {
+        // Teardown
+        glDeleteBuffers(1, &vbo);
+        CheckGLErrors();
 
-		glDeleteVertexArrays(1, &vao);
-		CheckGLErrors();
+        glDeleteVertexArrays(1, &vao);
+        CheckGLErrors();
 
-		glDeleteProgram(program);
-		CheckGLErrors();
+        glDeleteProgram(program);
+        CheckGLErrors();
 
         glDeleteTextures(textures.size(), &textures[0]);
         CheckGLErrors();
     });
 
-	return record;
+    return record;
 }

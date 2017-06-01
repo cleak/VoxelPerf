@@ -54,6 +54,9 @@
     <ClCompile Include="SignedDistanceFields.cpp">
       <Filter>Techniques\Src</Filter>
     </ClCompile>
+    <ClCompile Include="LayerMarching.cpp">
+      <Filter>Techniques\Src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PerfTimer.h">
@@ -87,6 +90,9 @@
       <Filter>Techniques</Filter>
     </ClInclude>
     <ClInclude Include="SignedDistanceFields.h">
+      <Filter>Techniques</Filter>
+    </ClInclude>
+    <ClInclude Include="LayerMarching.h">
       <Filter>Techniques</Filter>
     </ClInclude>
   </ItemGroup>

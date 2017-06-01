@@ -127,6 +127,7 @@
     <ClCompile Include="GeometryShader.cpp" />
     <ClCompile Include="HybridInstanced.cpp" />
     <ClCompile Include="Instanced.cpp" />
+    <ClCompile Include="LayerMarching.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="PerfFramework.cpp" />
     <ClCompile Include="PerfTimer.cpp" />
@@ -140,6 +141,7 @@
     <ClInclude Include="GeometryShader.h" />
     <ClInclude Include="HybridInstanced.h" />
     <ClInclude Include="Instanced.h" />
+    <ClInclude Include="LayerMarching.h" />
     <ClInclude Include="PerfFramework.h" />
     <ClInclude Include="PerfTimer.h" />
     <ClInclude Include="QuadGeom.h" />

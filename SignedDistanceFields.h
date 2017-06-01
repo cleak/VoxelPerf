@@ -6,5 +6,5 @@
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 
-// Runs a performance test that uses hierarchical display lists
+// Runs a performance test that uses signed distance fields
 PerfRecord RunSdfTest(VoxelSet& model, glm::ivec3 gridSize, glm::vec3 voxelSpacing);

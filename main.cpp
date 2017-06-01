@@ -25,6 +25,7 @@
 #include "CompactDisplayLists.h"
 #include "HybridInstanced.h"
 #include "SignedDistanceFields.h"
+#include "LayerMarching.h"
 
 using namespace glm;
 using namespace std;
@@ -39,7 +40,8 @@ static map<string, PerfTestFn> tests = {
 	{ "qgs", RunQuadGeometryShaderTest },
 	{ "inst", RunInstancedTest },
 	{ "hyi", RunHybridInstancedTest },
-	{ "sdf", RunSdfTest },
+    { "sdf", RunSdfTest },
+    { "lm", RunLayerMarchingTest },
 };
 
 template <typename T>

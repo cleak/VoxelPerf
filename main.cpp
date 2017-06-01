@@ -26,6 +26,7 @@
 #include "HybridInstanced.h"
 #include "SignedDistanceFields.h"
 #include "LayerMarching.h"
+#include "SdfShape.h"
 
 using namespace glm;
 using namespace std;
@@ -41,6 +42,7 @@ static map<string, PerfTestFn> tests = {
 	{ "inst", RunInstancedTest },
 	{ "hyi", RunHybridInstancedTest },
     { "sdf", RunSdfTest },
+    { "sdfs", RunSdfShapeTest },
     { "lm", RunLayerMarchingTest },
 };
 

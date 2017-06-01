@@ -132,6 +132,7 @@
     <ClCompile Include="PerfFramework.cpp" />
     <ClCompile Include="PerfTimer.cpp" />
     <ClCompile Include="QuadGeom.cpp" />
+    <ClCompile Include="SdfShape.cpp" />
     <ClCompile Include="SignedDistanceFields.cpp" />
     <ClCompile Include="Vaos.cpp" />
   </ItemGroup>
@@ -145,6 +146,7 @@
     <ClInclude Include="PerfFramework.h" />
     <ClInclude Include="PerfTimer.h" />
     <ClInclude Include="QuadGeom.h" />
+    <ClInclude Include="SdfShape.h" />
     <ClInclude Include="SignedDistanceFields.h" />
     <ClInclude Include="Vaos.h" />
     <ClInclude Include="Voxels.h" />

@@ -92,6 +92,7 @@ static void MakeSdfQuad(VoxelSet& model, ivec3 dimensions, vec3 spacing, GLuint&
 
     size_t modelCount = dimensions.x * dimensions.y * dimensions.z;
 
+	CheckGLErrors();
 
     glGenBuffers(1, &vbo);
     CheckGLErrors();
@@ -235,13 +236,20 @@ PerfRecord RunSdfShapeTest(VoxelSet & model, glm::ivec3 gridSize, glm::vec3 voxe
             { "Shaders/sdf.vert", GL_VERTEX_SHADER },
             { "Shaders/sdf_shape.frag", GL_FRAGMENT_SHADER },
         });
-        mvpLoc = glGetUniformLocation(program, "mvp");
-        mvInvLoc = glGetUniformLocation(program, "mvInv");
-        mvLoc = glGetUniformLocation(program, "mv");
-        nearDimLoc = glGetUniformLocation(program, "nearPlaneDim");
+		CheckGLErrors();
+
+		mvpLoc = glGetUniformLocation(program, "mvp");
+		CheckGLErrors();
+		mvInvLoc = glGetUniformLocation(program, "mvInv");
+		CheckGLErrors();
+		mvLoc = glGetUniformLocation(program, "mv");
+		CheckGLErrors();
+
+		nearDimLoc = glGetUniformLocation(program, "nearPlaneDim");
         nearDistLoc = glGetUniformLocation(program, "nearPlaneDist");
         offsetLoc = glGetUniformLocation(program, "offset");
-        MakeSdfQuad(model, gridSize, voxelSpacing, vao, vbo, program);
+		CheckGLErrors();
+		MakeSdfQuad(model, gridSize, voxelSpacing, vao, vbo, program);
         cubeVao = BufferCube(32.0f * VOXEL_SIZE, program);
 
         int nextOffsetIdx = 0;

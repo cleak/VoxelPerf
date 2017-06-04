@@ -158,6 +158,7 @@ static GLuint VoxelsToTexture(VoxelSet & voxels) {
     glTexImage3D(GL_TEXTURE_3D,
         0,
         GL_RGBA8,
+		//GL_COMPRESSED_RGBA,
         voxels.size.x,
         voxels.size.y,
         voxels.size.z,

@@ -31,7 +31,7 @@ PackedColor PackColor(glm::vec3 color);
 #define FRAMES_TO_DISCARD 32
 
 // How many frames to record and average for a single sample
-#define FRAMES_TO_RECORD 128128128
+#define FRAMES_TO_RECORD 128
 
 #define ROTATE false
 //#define ROTATE true
@@ -78,3 +78,7 @@ GLuint MakeShaderProgram(std::vector<std::pair<std::string, GLenum>> shaders);
 
 // Reads in the entire contents of the specified text file
 std::string ReadTextFile(std::string filename);
+
+// Query command line arguments
+std::string GetOption(std::string optionName);
+bool IsOptionSet(std::string optionName);

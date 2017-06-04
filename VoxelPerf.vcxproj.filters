@@ -60,6 +60,15 @@
     <ClCompile Include="SdfShape.cpp">
       <Filter>Techniques\Src</Filter>
     </ClCompile>
+    <ClCompile Include="SdfJump.cpp">
+      <Filter>Techniques\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="SdfJumpSphere.cpp">
+      <Filter>Techniques\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="LayerMarchingCompressed.cpp">
+      <Filter>Techniques\Src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PerfTimer.h">
@@ -99,6 +108,15 @@
       <Filter>Techniques</Filter>
     </ClInclude>
     <ClInclude Include="SdfShape.h">
+      <Filter>Techniques</Filter>
+    </ClInclude>
+    <ClInclude Include="SdfJump.h">
+      <Filter>Techniques</Filter>
+    </ClInclude>
+    <ClInclude Include="SdfJumpSphere.h">
+      <Filter>Techniques</Filter>
+    </ClInclude>
+    <ClInclude Include="LayerMarchingCompressed.h">
       <Filter>Techniques</Filter>
     </ClInclude>
   </ItemGroup>

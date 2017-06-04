@@ -276,9 +276,13 @@ PerfRecord RunQuadGeometryShaderTest(VoxelSet & model, glm::ivec3 gridSize, glm:
             glBindVertexArray(vaos[i]);
 
             for (int j = 0; j < 6; ++j) {
+				// Kludge to iterate over x twice, y twice, and z twice
                 int compareIdx = j / 2;
+
+				// Visibility threshold along a particular axis
                 float thresh = offset[compareIdx] + voxelSpacing[compareIdx] / 2.0f;
                 
+				// Direction of normal (used for deciding how to compare)
                 float normalDir = normals[j][compareIdx];
                 thresh += normalDir * voxelSpacing[compareIdx] / 2.0f;
 

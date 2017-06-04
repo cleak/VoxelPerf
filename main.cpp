@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -26,7 +27,10 @@
 #include "HybridInstanced.h"
 #include "SignedDistanceFields.h"
 #include "LayerMarching.h"
+#include "LayerMarchingCompressed.h"
 #include "SdfShape.h"
+#include "SdfJump.h"
+#include "SdfJumpSphere.h"
 
 using namespace glm;
 using namespace std;
@@ -42,8 +46,11 @@ static map<string, PerfTestFn> tests = {
 	{ "inst", RunInstancedTest },
 	{ "hyi", RunHybridInstancedTest },
     { "sdf", RunSdfTest },
-    { "sdfs", RunSdfShapeTest },
-    { "lm", RunLayerMarchingTest },
+	{ "sdfs", RunSdfShapeTest },
+	{ "sdfj", RunSdfJumpTest },
+	{ "sdfjs", RunSdfJumpSphereTest },
+	{ "lm", RunLayerMarchingTest },
+	{ "lmc", RunLayerMarchingCompressedTest },
 };
 
 template <typename T>
@@ -75,32 +82,59 @@ string JoinFirst(T iterable, string delim) {
 }
 
 void Usage() {
-	cerr << "VoxelPerf [" << JoinFirst(tests, "|") << "] <width> <height> <depth>" << endl;
+	cerr << "VoxelPerf [-t] <" << JoinFirst(tests, "|") << "> <width> <height> <depth>" << endl;
 }
 
+extern std::map<string, string> g_commandLineOptions;
+
 int main(int argc, char** argv) {
-    if (argc != 5) {
+	//map<string, string> options;
+	vector<string> arguments;
+
+	for (int i = 0; i < argc; ++i) {
+		string arg = argv[i];
+		if (arg.size() > 0 && arg[0] == '-') {
+			if (arg.find('=') != string::npos) {
+				size_t splitIdx = arg.find('=');
+				string key = arg.substr(1, splitIdx - 1);
+				string val = arg.substr(splitIdx + 1, arg.size() - splitIdx - 1);
+				g_commandLineOptions.insert({ key, val });
+			} else {
+				g_commandLineOptions.insert({ arg.substr(1, arg.size() - 1), "" });
+			}
+		} else {
+			arguments.push_back(arg);
+		}
+	}
+
+    if (arguments.size() != 5) {
         Usage();
         exit(EXIT_FAILURE);
     }
 
-    string testType = string(argv[1]);
+    string testType = arguments[1];
     if (!tests.count(testType)) {
         Usage();
         exit(EXIT_FAILURE);
     }
 
-    int w = atoi(argv[2]);
-    int h = atoi(argv[3]);
-    int d = atoi(argv[4]);
+    int w = atoi(arguments[2].c_str());
+    int h = atoi(arguments[3].c_str());
+    int d = atoi(arguments[4].c_str());
 
     if (w <= 0 || h <= 0 || d <= 0) {
         Usage();
         exit(EXIT_FAILURE);
     }
 
-    VoxelSet sphere({ 32,32,32 });
-    sphere.MakeSphere();
+    VoxelSet model({ 32,32,32 });
+
+	if (IsOptionSet("t")) {
+		// Make a trivial example
+		model.At({31, 31, 31}) = vec4(0.8f, 0.6f, 0.2f, 1);
+	} else {
+		model.MakeSphere();
+	}
 
     ivec3 voxelGrid(w, h, d);
 
@@ -109,7 +143,7 @@ int main(int argc, char** argv) {
 
     int numObjects = voxelGrid.x * voxelGrid.y * voxelGrid.z;
 
-    PerfRecord record = tests[testType](sphere, voxelGrid, voxelSpacing);
+    PerfRecord record = tests[testType](model, voxelGrid, voxelSpacing);
 
     cout << testType << ", " << numObjects << ", " << record.averageFrameTimeMs << ", " << record.gpuMemUsed << ", " << record.mainMemUsed << endl;
     exit(EXIT_SUCCESS);

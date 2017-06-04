@@ -3,6 +3,7 @@
 #include <cassert>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <vector>
 
@@ -285,4 +286,18 @@ PackedColor PackColor(vec3 color) {
     packed.g = (unsigned int)(color.g * 1023);
     packed.b = (unsigned int)(color.b * 1023);
     return packed;
+}
+
+std::map<string, string> g_commandLineOptions;
+
+bool IsOptionSet(std::string optionName) {
+	return g_commandLineOptions.count(optionName) > 0;
+}
+
+std::string GetOption(std::string optionName) {
+	if (g_commandLineOptions.count(optionName) == 0) {
+		return "";
+	} else {
+		return g_commandLineOptions[optionName];
+	}
 }

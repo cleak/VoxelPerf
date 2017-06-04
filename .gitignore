@@ -336,3 +336,10 @@ __pycache__/
 *.xsd.cs
 
 !3rdParty/**
+
+# Benchmark result files
+*.csv
+*.xlsx
+
+Temp*
+sphereShape.txt

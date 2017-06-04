@@ -38,20 +38,20 @@ const float eps = 0.0005;
 
 vec4 march(vec3 startPoint, vec3 dir) {
 	vec3 p0 = startPoint / voxelSize;
-	vec3 d = dir / voxelSize;
 	float endT = mincomp(max((vec3(voxelGridSize) - p0) / dir, -p0 / dir));
+
+	vec3 p0abs = (1 - step(0, dir)) * voxelGridSize + sign(dir) * p0;
+	vec3 dirAbs = abs(dir);
 
 	float t = 0;
 	while (t <= endT) {
-		vec3 p = p0 + dir * t;
-		vec4 c = textureLod(voxels, p / voxelGridSize, 0);
+		vec4 c = textureLod(voxels, (p0 + dir * t) / voxelGridSize, 0);
 		if (c.a > 0) {
 			return c;
 		}
 
-		// TODO: For negative directions, we're probably taking twice as many steps as necessary
-		// since it'll go n => n + eps => n + 1 rather than n => n + 1
-		vec3 deltas = (step(0, dir) - fract(p)) / dir;
+		vec3 pAbs = p0abs + dirAbs * t;
+		vec3 deltas = (1 - fract(pAbs)) / dirAbs;
 		t += max(mincomp(deltas), eps);
 	}
 

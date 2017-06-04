@@ -28,6 +28,9 @@ vec4 march(vec3 startPoint, vec3 dir) {
 	vec3 p0 = startPoint / voxelSize;
 	float endT = mincomp(max((vec3(voxelGridSize) - p0) / dir, -p0 / dir));
 
+	vec3 p0abs = (1 - step(0, dir)) * voxelGridSize + sign(dir) * p0;
+	vec3 dirAbs = abs(dir);
+
 	float t = 0;
 	while (t <= endT) {
 		// Next point to check
@@ -37,12 +40,11 @@ vec4 march(vec3 startPoint, vec3 dir) {
 		// Stop if voxel is solid
 		if (jump == 255) {
 			return textureLod(voxelColor, vec3(p / (voxelGridSize)), 0);
-			//return vec4(1);
 		}
 
-		vec3 deltas = (step(0, dir) - fract(p)) / dir;
+		vec3 pAbs = p0abs + dirAbs * t;
+		vec3 deltas = (1 - fract(p)) / dirAbs;
 		t += max(mincomp(deltas), eps) + jump;
-		//t += max(mincomp(deltas), eps);
 	}
 
 	return vec4(0);
